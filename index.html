@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Flippy v4 · Alight Motion XML Studio</title>
+  <meta name="description" content="Build multi-layer wipes, connected masks, 3D flips, cubes, and Box V2 3D effects for Alight Motion XML.">
+  <meta name="theme-color" content="#0d0d0c" id="metaThemeColor">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=4.1">
+</head>
+<body class="locked">
+
+  <!-- Subtle Technical Drafting Grid -->
+  <div class="studio-backdrop" aria-hidden="true"></div>
+
+  <!-- Studio Access Gate -->
+  <div id="password-overlay" role="dialog" aria-modal="true" aria-labelledby="accessHeading">
+    <div class="access-card" id="accessCard">
+      <div class="access-header-row">
+        <div class="brand-shutter" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <span class="access-tag">LOCKED WORKSPACE</span>
+      </div>
+      <h2 class="access-title" id="accessHeading">Flippy <span>v4</span></h2>
+      <p class="access-sub">Enter your studio key to open the workspace.</p>
+      <div class="access-field">
+        <input type="password" id="website-password" placeholder="Access key" autocomplete="current-password" spellcheck="false" autocapitalize="off" autocorrect="off">
+        <button type="button" class="pw-vis-btn" id="togglePasswordVis" aria-label="Show or hide key" title="Show or hide key">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </button>
+      </div>
+      <button id="password-submit" type="button">
+        <span>Unlock Workspace</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <p id="password-error" role="alert">Wrong key. Check spelling and try again.</p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var savedTheme = null;
+      try { savedTheme = localStorage.getItem('flippy_v4_theme'); } catch (e) {}
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        var meta = document.getElementById('metaThemeColor');
+        if (meta) meta.setAttribute('content', savedTheme === 'light' ? '#f3efe6' : '#0d0d0c');
+      }
+
+      var overlay = document.getElementById('password-overlay');
+      var card = document.getElementById('accessCard');
+      var input = document.getElementById('website-password');
+      var submit = document.getElementById('password-submit');
+      var error = document.getElementById('password-error');
+      var visBtn = document.getElementById('togglePasswordVis');
+
+      if (visBtn && input) {
+        visBtn.addEventListener('click', function () {
+          var isPw = input.type === 'password';
+          input.type = isPw ? 'text' : 'password';
+          visBtn.classList.toggle('active', isPw);
+          input.focus();
+        });
+      }
+
+      function unlock() {
+        if (card) card.classList.remove('denied');
+        if (overlay) overlay.classList.add('granted');
+        if (input) input.blur();
+        try { sessionStorage.setItem('flippy_auth', '1'); } catch (e) {}
+
+        setTimeout(function () {
+          document.body.classList.remove('locked');
+          document.body.classList.add('unlocked');
+          if (window.__flippyCheckLayout) window.__flippyCheckLayout();
+          window.dispatchEvent(new Event('resize'));
+          window.scrollTo(0, 0);
+        }, 220);
+
+        setTimeout(function () {
+          if (overlay) overlay.style.display = 'none';
+          if (window.__flippyCheckLayout) window.__flippyCheckLayout();
+          window.dispatchEvent(new Event('resize'));
+        }, 520);
+      }
+
+      submit.addEventListener('click', function () {
+        var val = (input.value || '').trim();
+        if (val === 'AjDybantsaisass') {
+          unlock();
+        } else {
+          error.classList.add('show');
+          card.classList.remove('denied');
+          void card.offsetWidth;
+          card.classList.add('denied');
+        }
+      });
+
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+          e.preventDefault();
+          submit.click();
+        }
+      });
+
+      input.addEventListener('input', function () {
+        error.classList.remove('show');
+        card.classList.remove('denied');
+      });
+
+      try {
+        if (sessionStorage.getItem('flippy_auth') === '1') {
+          if (overlay) overlay.style.display = 'none';
+          document.body.classList.remove('locked');
+          document.body.classList.add('unlocked');
+        } else {
+          setTimeout(function () { if (window.innerWidth > 860) input.focus(); }, 300);
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  <!-- Desktop Studio Header -->
+  <header id="app-header">
+    <div class="header-content">
+      <div class="logo-group">
+        <div class="brand-shutter" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="header-meta">
+          <div class="header-title-row">
+            <h1>Flippy</h1>
+            <span class="version-pill">v4</span>
+          </div>
+          <p class="subtitle">Alight Motion XML Toolset</p>
+        </div>
+      </div>
+
+      <!-- Workspace Mode Switcher -->
+      <nav class="app-nav-tabs" id="appNavTabs" aria-label="Workspace modes">
+        <button class="nav-tab active" data-tab="studio" id="navTabStudio" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+          <span>Wipe Studio</span>
+        </button>
+        <button class="nav-tab" data-tab="converter" id="navTabConverter" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <span>Media Converter</span>
+        </button>
+      </nav>
+
+      <!-- Live Spec Readout -->
+      <div class="hud-strip" aria-label="Project specifications">
+        <div class="hud-chip"><span class="hud-k">Layers</span><span class="hud-v" id="hudLayers">5</span></div>
+        <div class="hud-chip"><span class="hud-k">Method</span><span class="hud-v" id="hudSlice">MASK</span></div>
+        <div class="hud-chip"><span class="hud-k">Motion</span><span class="hud-v" id="hudMode">FLIP</span></div>
+        <div class="hud-chip"><span class="hud-k">Canvas</span><span class="hud-v" id="hudRes">1080 × 1350</span></div>
+        <div class="hud-chip"><span class="hud-k">Rate</span><span class="hud-v" id="hudFps">60</span></div>
+      </div>
+
+      <div class="header-right">
+        <div class="timecode" id="hudTimecode" title="Playhead position">0.00s</div>
+        <button class="theme-switch-btn" id="themeToggleBtn" type="button" title="Switch Darkroom / Paper theme" aria-label="Switch color theme">
+          <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="header-export-btn" id="headerExportBtn" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span id="headerExportLabel">Export XML</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main id="app-main">
+
+    <!-- Left Column: Inspector -->
+    <section class="panel controls-panel" id="controls-panel">
+      <div class="panel-header">
+        <h2>
+          <span class="ph-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
+              <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
+              <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
+            </svg>
+          </span>
+          <span class="ph-text">Inspector<small>Geometry, timing, and 3D motion</small></span>
+        </h2>
+        <button class="ph-action" id="collapseAllBtn" type="button" title="Collapse or expand all sections">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 15 12 20 17 15"/><polyline points="7 9 12 4 17 9"/></svg>
+          <span>Fold All</span>
+        </button>
+      </div>
+
+      <div class="controls-body">
+
+        <!-- Module 01: Canvas & Slicing -->
+        <div class="module open" data-module>
+          <button class="module-head" type="button" aria-expanded="true">
+            <span class="module-index">01</span>
+            <span class="module-title">Canvas &amp; Slicing<small>Method, media, dimensions, color</small></span>
+            <span class="module-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="module-body"><div class="module-inner">
+
+            <!-- Slicing Method -->
+            <div class="control-group">
+              <label>
+                Slicing Method
+                <span class="badge" id="slicingBadge">4:5 MASK ACTIVE</span>
+              </label>
+              <div class="toggle-group" id="wipeMethodToggle">
+                <button class="toggle-btn" data-value="wipe" type="button">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <line x1="2" y1="8" x2="14" y2="8"/>
+                    <polyline points="9 3 14 8 9 13"/>
+                  </svg>
+                  Wipe
+                </button>
+                <button class="toggle-btn active" data-value="mask" type="button">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <rect x="2" y="2" width="5" height="12" rx="1"/>
+                    <rect x="9" y="2" width="5" height="12" rx="1"/>
+                  </svg>
+                  Mask
+                </button>
+                <button class="toggle-btn" data-value="boxv2" type="button">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <path d="M8 1.5L14 5v6l-6 3.5L2 11V5l6-3.5z"/>
+                    <polyline points="2 5 8 8.5 14 5"/>
+                    <line x1="8" y1="14.5" x2="8" y2="8.5"/>
+                  </svg>
+                  Box V2
+                </button>
+              </div>
+              <div class="control-hint">Wipe uses the native wipe2 shader. Mask builds Group &amp; Mask tiles. Box V2 pairs wipe2 with 3D Box and Stretch2 at 2.40x scale.</div>
+            </div>
+
+            <!-- Masking Configuration -->
+            <div id="maskingOptions" class="reveal-box">
+              <div class="control-group">
+                <label>4:5 Geometry Presets</label>
+                <div class="pill-row">
+                  <button type="button" class="preset-pill" id="preset45Fit" title="650 × 812.5 (Project 294)">Fit 4:5 (650 × 812.5)</button>
+                  <button type="button" class="preset-pill active" id="preset45Full" title="1080 × 1350 (Full canvas)">Full 4:5 (1080 × 1350)</button>
+                </div>
+              </div>
+              <div class="control-group" style="margin-bottom: 0;">
+                <label>Scene Grouping</label>
+                <div class="toggle-group" id="maskGroupToggle">
+                  <button class="toggle-btn active" data-value="embed" type="button">EmbedScene Group</button>
+                  <button class="toggle-btn" data-value="direct" type="button">Direct Slices</button>
+                </div>
+                <div class="control-hint">EmbedScene wraps slice groups inside a parent scene matching Project 294.</div>
+              </div>
+            </div>
+
+            <!-- Wipe Effect Configuration -->
+            <div id="wipeOptions" class="reveal-box" style="display: none;">
+              <div class="control-group" style="margin-bottom: 0;">
+                <label>
+                  Auto-Center Slice Pivot
+                  <span class="badge" id="wipeAutoFixBadge">ALL ANGLES</span>
+                </label>
+                <div class="toggle-group" id="wipeAutoFixPivotToggle">
+                  <button class="toggle-btn active" data-value="on" type="button">On</button>
+                  <button class="toggle-btn" data-value="off" type="button">Off</button>
+                </div>
+                <div class="control-hint">Centers the flip pivot on each slice across vertical, horizontal, and diagonal cuts.</div>
+              </div>
+            </div>
+
+            <!-- BOX V2 Configuration -->
+            <div id="boxV2Options" class="reveal-box" style="display: none;">
+              <div class="control-group">
+                <label>
+                  Box V2 Scale Resolution &amp; 3D Box
+                  <span class="badge" id="boxV2FormulaBadge">Rect 1080×1350 · 2.40x Box</span>
+                </label>
+                <div class="control-hint" style="margin-bottom: 8px;">
+                  Rectangle layers in Alight Motion XML stay locked to <strong>1080 × 1350 px</strong> (<code>size = 540, 675</code>, transform scale <code>1.00</code>). Scale <strong>1.00</strong> in the Box effect equals a <strong>450 × 561.7</strong> layer (4:5). Typing your <strong>Scale Resolution</strong> calculates the Box effect scale: <code>scale = Width ÷ 450</code>.
+                </div>
+                <div class="solid-size-row">
+                  <div class="input-group">
+                    <input type="number" id="boxv2ScaleWidth" value="450" min="10" step="any" title="Scale Resolution Width">
+                    <div class="input-suffix">W</div>
+                  </div>
+                  <button class="link-btn active" id="boxv2AspectLinkBtn" type="button" title="Lock 4:5 ratio for Scale Resolution">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                    </svg>
+                  </button>
+                  <div class="input-group">
+                    <input type="number" id="boxv2ScaleHeight" value="562.5" min="10" step="any" title="Scale Resolution Height">
+                    <div class="input-suffix">H</div>
+                  </div>
+                </div>
+                <div class="pill-row" style="margin-top: 8px;">
+                  <button type="button" class="preset-pill" id="boxv2Preset133">600 × 750 (Scale 1.33)</button>
+                  <button type="button" class="preset-pill active" id="boxv2Preset240">1080 × 1350 (Scale 2.40)</button>
+                  <button type="button" class="preset-pill" id="boxv2Preset100">450 × 562.5 (Scale 1.00)</button>
+                  <button type="button" class="preset-pill" id="boxv2Preset200">540 × 675 (Scale 1.20)</button>
+                  <button type="button" class="preset-pill" id="boxv2Preset166">650 × 812.5 (Scale 1.44)</button>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <label>Start Rotation (X, Y, Z)</label>
+                <div class="solid-size-row">
+                  <div class="input-group"><input type="number" id="boxv2StartX" value="0" step="any" title="Start X Rotation"><div class="input-suffix">X</div></div>
+                  <div class="input-group"><input type="number" id="boxv2StartY" value="0" step="any" title="Start Y Rotation"><div class="input-suffix">Y</div></div>
+                  <div class="input-group"><input type="number" id="boxv2StartZ" value="0" step="any" title="Start Z Rotation"><div class="input-suffix">Z</div></div>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <label>End Rotation (X, Y, Z)</label>
+                <div class="solid-size-row">
+                  <div class="input-group"><input type="number" id="boxv2EndX" value="0" step="any" title="End X Rotation"><div class="input-suffix">X</div></div>
+                  <div class="input-group"><input type="number" id="boxv2EndY" value="90" step="any" title="End Y Rotation"><div class="input-suffix">Y</div></div>
+                  <div class="input-group"><input type="number" id="boxv2EndZ" value="0" step="any" title="End Z Rotation"><div class="input-suffix">Z</div></div>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <label>Box Effect Parameters &amp; Ray Marching</label>
+                <div class="solid-size-row">
+                  <div class="input-group"><input type="number" id="boxv2BoxScale" value="2.40" step="0.01" title="Box Effect Scale"><div class="input-suffix">Scale</div></div>
+                  <div class="input-group"><input type="number" id="boxv2BoxHeight" value="1.00" step="0.01" title="Box Height"><div class="input-suffix">H</div></div>
+                  <div class="input-group"><input type="number" id="boxv2MaxIter" value="200" min="10" max="200" step="1" title="Ray Marching Precision (Max 200)"><div class="input-suffix">Precision</div></div>
+                  <input type="hidden" id="boxv2LayerScale" value="2.40">
+                </div>
+                <div class="control-hint" style="margin-top: 4px;">Ray Marching Precision locked to <strong>200 (Max)</strong> for high-definition 3D rendering in Alight Motion.</div>
+              </div>
+
+              <div class="control-group" style="margin-bottom: 0;">
+                <label>Stretch2 Axis (Angle &amp; Scale)</label>
+                <div class="solid-size-row">
+                  <div class="input-group"><input type="number" id="boxv2StretchAngle" value="90" step="1" title="Stretch2 Angle"><div class="input-suffix">Deg</div></div>
+                  <div class="input-group"><input type="number" id="boxv2StretchScale" value="1.25" step="0.01" title="Stretch2 Scale"><div class="input-suffix">Scale</div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Split Direction -->
+            <div class="control-group">
+              <label>Split Direction</label>
+              <div class="toggle-group split-direction-grid" id="splitDirection">
+                <button class="toggle-btn active" data-value="horizontal" type="button">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <rect x="1" y="1" width="14" height="14" rx="2"/>
+                    <line x1="1" y1="5.5" x2="15" y2="5.5"/>
+                    <line x1="1" y1="10.5" x2="15" y2="10.5"/>
+                  </svg>
+                  Horizontal (90°)
+                </button>
+                <button class="toggle-btn" data-value="vertical" type="button">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <rect x="1" y="1" width="14" height="14" rx="2"/>
+                    <line x1="5.5" y1="1" x2="5.5" y2="15"/>
+                    <line x1="10.5" y1="1" x2="10.5" y2="15"/>
+                  </svg>
+                  Vertical (0°)
+                </button>
+                <button class="toggle-btn" data-value="diagonal" type="button">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <rect x="1" y="1" width="14" height="14" rx="2"/>
+                    <line x1="1" y1="15" x2="15" y2="1"/>
+                    <line x1="1" y1="8" x2="8" y2="1"/>
+                    <line x1="8" y1="15" x2="15" y2="8"/>
+                  </svg>
+                  Diagonal ↗ (45°)
+                </button>
+                <button class="toggle-btn" data-value="diagonal-desc" type="button">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <rect x="1" y="1" width="14" height="14" rx="2"/>
+                    <line x1="1" y1="1" x2="15" y2="15"/>
+                    <line x1="1" y1="8" x2="8" y2="15"/>
+                    <line x1="8" y1="1" x2="15" y2="8"/>
+                  </svg>
+                  Diagonal ↘ (135°)
+                </button>
+              </div>
+            </div>
+
+            <!-- Video Layer Toggle -->
+            <div class="control-group">
+              <label>
+                Video Fill Layer
+                <span class="badge amber">MEDIA URI</span>
+              </label>
+              <div class="toggle-group" id="videoLayerToggle">
+                <button class="toggle-btn" data-value="on" type="button">On</button>
+                <button class="toggle-btn active" data-value="off" type="button">Off</button>
+              </div>
+              <div class="control-hint">Export video clip layers instead of solid color shapes.</div>
+            </div>
+
+            <!-- Video Layer Controls -->
+            <div id="videoLayerControls" class="reveal-box" style="display: none;">
+              <div class="control-group">
+                <label for="videoUri">Video Asset URI</label>
+                <input type="text" id="videoUri" value="am-internal:///4BA32805414BE561BE374FA7D5B88C4BF8261057.MP4" spellcheck="false">
+              </div>
+              <div class="control-group" style="margin-bottom: 0;">
+                <label for="videoDurationMs">Video Duration (ms)</label>
+                <input type="number" id="videoDurationMs" value="10450" min="1" step="1">
+              </div>
+            </div>
+
+            <!-- Project Scale -->
+            <div class="control-group">
+              <label for="projectScale">Canvas Resolution</label>
+              <select id="projectScale">
+                <option value="1">1x (1080 × 1350) · Standard</option>
+                <option value="0.5">0.5x (540 × 675) · Half</option>
+                <option value="2">2x (2160 × 2700) · 4K Vertical</option>
+              </select>
+            </div>
+
+            <!-- Solid Geometry -->
+            <div class="control-group">
+              <label id="solidDimensionsLabel">Solid Dimensions (W × H)</label>
+              <div class="solid-size-row">
+                <div class="input-group">
+                  <input type="number" id="solidWidth" value="1080" min="10" step="any" title="Width">
+                  <div class="input-suffix">W</div>
+                </div>
+                <button class="link-btn active" id="aspectLinkBtn" type="button" title="Lock or unlock 4:5 aspect ratio">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                  </svg>
+                </button>
+                <div class="input-group">
+                  <input type="number" id="solidHeight" value="1350" min="10" step="any" title="Height">
+                  <div class="input-suffix">H</div>
+                </div>
+              </div>
+              <div class="control-hint" id="aspectHint">Ratio locked at 4:5</div>
+            </div>
+
+            <!-- Solid Color -->
+            <div class="control-group" style="margin-bottom: 0;">
+              <label for="solidColor">Base Fill Color</label>
+              <div class="color-picker-row">
+                <div class="color-swatch-wrap"><input type="color" id="solidColor" value="#E05A3A"></div>
+                <span class="color-value" id="colorValue">#E05A3A</span>
+              </div>
+            </div>
+          </div></div>
+        </div>
+
+        <!-- Module 02: Timeline -->
+        <div class="module open" data-module>
+          <button class="module-head" type="button" aria-expanded="true">
+            <span class="module-index">02</span>
+            <span class="module-title">Timeline<small>Duration and frame rate</small></span>
+            <span class="module-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="module-body"><div class="module-inner">
+            <div class="control-group" style="margin-bottom: 0;">
+              <label>Scene Duration &amp; Frame Rate</label>
+              <div class="solid-size-row">
+                <div class="input-group" style="flex:2">
+                  <input type="text" id="projectDuration" value="00:05:00" class="time-input" placeholder="MM:SS:FF">
+                </div>
+                <div class="input-group" style="flex:1">
+                  <input type="number" id="projectFps" value="60" step="1" title="FPS">
+                  <div class="input-suffix">FPS</div>
+                </div>
+              </div>
+              <div class="control-hint">Timecode format: MM:SS:FF</div>
+            </div>
+          </div></div>
+        </div>
+
+        <!-- Module 03: Motion -->
+        <div class="module open" data-module>
+          <button class="module-head" type="button" aria-expanded="true">
+            <span class="module-index">03</span>
+            <span class="module-title">Motion<small>3D effect, beat markers, pivot</small></span>
+            <span class="module-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="module-body"><div class="module-inner">
+
+            <!-- Animation Type -->
+            <div class="control-group">
+              <label>
+                3D Effect
+                <span class="badge">KEYFRAMES</span>
+              </label>
+              <div class="toggle-group anim-grid" id="animTypeToggle">
+                <button class="toggle-btn" data-value="none" type="button">None</button>
+                <button class="toggle-btn active" data-value="flip" type="button">Flip</button>
+                <button class="toggle-btn" data-value="cube" type="button">Cube</button>
+                <button class="toggle-btn" data-value="box" type="button">Box</button>
+                <button class="toggle-btn" data-value="boxv2" type="button">Box V2</button>
+              </div>
+              <div class="control-hint">Writes 3D effect keyframes directly to each slice in the exported XML.</div>
+            </div>
+
+            <!-- Box V2 Direct Controls in 3D Motion -->
+            <div id="boxV23DMotionControls" class="reveal-box-plain" style="display: none;">
+              <div class="section-block stage">
+                <div class="section-header">
+                  <span class="stage-num" style="background: linear-gradient(135deg, #06b6d4, #0284c7); color: #fff;">V2</span>
+                  Box V2 Scale Resolution &amp; 3D Box Effect
+                </div>
+                <div class="formula-card">
+                  <div class="formula-badge">
+                    <span class="formula-tag" style="background: rgba(6,182,212,0.2); color: var(--cyan); border-color: rgba(6,182,212,0.4);">SHAPES LOCKED AT 1080×1350</span>
+                    <span class="formula-math" id="boxv2FormulaMathDisplay">Box Scale = 1.33 × (1080 ÷ 450) = 3.192x @ 2.40x Mult</span>
+                  </div>
+                  <div class="control-hint" style="margin-top: 6px; font-size: 11px;">
+                    In Box V2 mode, all rectangles (Rectangle 1, Rectangle 1 copy, etc.) are locked to <strong>1080 × 1350</strong> (<code>size = 540, 675</code>). Scale <strong>1.00</strong> in the Box effect equals a <strong>450 × 561.7</strong> layer (4:5). Typing your Scale Resolution calculates the Box effect scale: <code>scale = Width ÷ 450</code>.
+                  </div>
+                </div>
+
+                <div class="control-group" style="margin-top: 12px;">
+                  <label>
+                    Scale Resolution (W × H)
+                    <span class="badge" id="boxv2MotionScaleBadge">2.40x Box Scale</span>
+                  </label>
+                  <div class="solid-size-row">
+                    <div class="input-group">
+                      <input type="number" id="boxv2MotionScaleWidth" value="450" min="10" step="any" title="Scale Resolution Width">
+                      <div class="input-suffix">W</div>
+                    </div>
+                    <button class="link-btn active" id="boxv2MotionAspectLinkBtn" type="button" title="Lock 4:5 ratio for Scale Resolution">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                      </svg>
+                    </button>
+                    <div class="input-group">
+                      <input type="number" id="boxv2MotionScaleHeight" value="562.5" min="10" step="any" title="Scale Resolution Height">
+                      <div class="input-suffix">H</div>
+                    </div>
+                  </div>
+                  <div class="pill-row" style="margin-top: 8px;">
+                    <button type="button" class="preset-pill" id="boxv2Preset133Motion">600 × 750 (Scale 1.33)</button>
+                    <button type="button" class="preset-pill active" id="boxv2Preset240Motion">1080 × 1350 (Scale 2.40)</button>
+                    <button type="button" class="preset-pill" id="boxv2Preset100Motion">450 × 562.5 (Scale 1.00)</button>
+                    <button type="button" class="preset-pill" id="boxv2Preset200Motion">540 × 675 (Scale 1.20)</button>
+                    <button type="button" class="preset-pill" id="boxv2Preset166Motion">650 × 812.5 (Scale 1.44)</button>
+                  </div>
+                </div>
+
+                <div class="control-group" style="margin-bottom: 0;">
+                  <label>Box Effect Parameters &amp; Ray Marching</label>
+                  <div class="solid-size-row">
+                    <div class="input-group"><input type="number" id="boxv2MotionBoxScale" value="2.40" step="0.01" title="Box Effect Scale"><div class="input-suffix">Scale</div></div>
+                    <div class="input-group"><input type="number" id="boxv2MotionBoxHeight" value="1.00" step="0.01" title="Box Height"><div class="input-suffix">H</div></div>
+                    <div class="input-group"><input type="number" id="boxv2MotionMaxIter" value="200" min="10" max="200" step="1" title="Ray Marching Precision (Max 200)"><div class="input-suffix">Precision</div></div>
+                    <input type="hidden" id="boxv2MotionLayerScale" value="2.40">
+                  </div>
+                  <div class="control-hint" style="margin-top: 4px;">Ray Marching Precision locked to <strong>200 (Max)</strong> for high-definition 3D rendering in Alight Motion.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Box Effect Controls -->
+            <div id="boxEffectControls" class="reveal-box-plain" style="display: none;">
+              <div class="section-block stage">
+                <div class="section-header"><span class="stage-num">S1</span>Stage 1: Orientation Flip</div>
+                <div class="control-group">
+                  <label>All Start</label>
+                  <input type="text" id="boxOrientAllStart" value="00:00:00" class="time-input" placeholder="MM:SS:FF">
+                </div>
+                <div class="control-group">
+                  <label>First Layer Ends</label>
+                  <input type="text" id="boxOrientFirstEnd" value="00:02:00" class="time-input" placeholder="MM:SS:FF">
+                </div>
+                <div class="control-group">
+                  <label>Last Layer Ends</label>
+                  <input type="text" id="boxOrientLastEnd" value="00:04:00" class="time-input" placeholder="MM:SS:FF">
+                </div>
+                <div class="control-group">
+                  <label>Start Rotation (X, Y, Z)</label>
+                  <div class="solid-size-row">
+                    <div class="input-group"><input type="number" id="boxOrientStartX" value="0" step="any"><div class="input-suffix">X</div></div>
+                    <div class="input-group"><input type="number" id="boxOrientStartY" value="0" step="any"><div class="input-suffix">Y</div></div>
+                    <div class="input-group"><input type="number" id="boxOrientStartZ" value="0" step="any"><div class="input-suffix">Z</div></div>
+                  </div>
+                </div>
+                <div class="control-group">
+                  <label>End Rotation (X, Y, Z)</label>
+                  <div class="solid-size-row">
+                    <div class="input-group"><input type="number" id="boxOrientEndX" value="0" step="any"><div class="input-suffix">X</div></div>
+                    <div class="input-group"><input type="number" id="boxOrientEndY" value="180" step="any"><div class="input-suffix">Y</div></div>
+                    <div class="input-group"><input type="number" id="boxOrientEndZ" value="0" step="any"><div class="input-suffix">Z</div></div>
+                  </div>
+                </div>
+                <div class="control-group" style="margin-bottom: 0;">
+                  <label>Stage 1 Easing</label>
+                  <button class="open-graph-btn" id="boxOrientEasingBtn" type="button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    Edit Bezier Curve
+                  </button>
+                </div>
+              </div>
+
+              <div class="section-block stage">
+                <div class="section-header"><span class="stage-num">S2</span>Stage 2: Secondary Rotation</div>
+                <div class="control-group">
+                  <label>All Start</label>
+                  <input type="text" id="boxRotateAllStart" value="00:01:00" class="time-input" placeholder="MM:SS:FF">
+                </div>
+                <div class="control-group">
+                  <label>First Layer Ends</label>
+                  <input type="text" id="boxRotateFirstEnd" value="00:03:00" class="time-input" placeholder="MM:SS:FF">
+                </div>
+                <div class="control-group">
+                  <label>Last Layer Ends</label>
+                  <input type="text" id="boxRotateLastEnd" value="00:05:00" class="time-input" placeholder="MM:SS:FF">
+                </div>
+                <div class="control-group">
+                  <label>Start Rotation (X, Y, Z)</label>
+                  <div class="solid-size-row">
+                    <div class="input-group"><input type="number" id="boxRotateStartX" value="0" step="any"><div class="input-suffix">X</div></div>
+                    <div class="input-group"><input type="number" id="boxRotateStartY" value="0" step="any"><div class="input-suffix">Y</div></div>
+                    <div class="input-group"><input type="number" id="boxRotateStartZ" value="0" step="any"><div class="input-suffix">Z</div></div>
+                  </div>
+                </div>
+                <div class="control-group">
+                  <label>End Rotation (X, Y, Z)</label>
+                  <div class="solid-size-row">
+                    <div class="input-group"><input type="number" id="boxRotateEndX" value="0" step="any"><div class="input-suffix">X</div></div>
+                    <div class="input-group"><input type="number" id="boxRotateEndY" value="180" step="any"><div class="input-suffix">Y</div></div>
+                    <div class="input-group"><input type="number" id="boxRotateEndZ" value="0" step="any"><div class="input-suffix">Z</div></div>
+                  </div>
+                </div>
+                <div class="control-group" style="margin-bottom: 0;">
+                  <label>Stage 2 Easing</label>
+                  <button class="open-graph-btn" id="boxRotateEasingBtn" type="button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    Edit Bezier Curve
+                  </button>
+                </div>
+              </div>
+
+              <div class="section-block stage">
+                <div class="section-header"><span class="stage-num">S3</span>Box Depth &amp; Scale</div>
+                <div class="readonly-row">
+                  <div class="readonly-field">
+                    <span class="field-label">Depth</span>
+                    <span class="field-value">0.01</span>
+                  </div>
+                  <div class="readonly-field">
+                    <span class="field-label">Scale</span>
+                    <span class="field-value">3.51</span>
+                  </div>
+                </div>
+                <div class="control-hint">Standard Alight Motion box parameters.</div>
+              </div>
+            </div>
+
+            <!-- Hollow Box Effect Controls (Masking Mode Only) -->
+            <div id="hollowBoxEffectControls" class="reveal-box-plain" style="display: none;">
+              <div class="section-block stage">
+                <div class="section-header">
+                  <span class="stage-num">FX</span>
+                  Stretch Axis Formula
+                </div>
+                <div class="formula-card">
+                  <div class="formula-badge">
+                    <span class="formula-tag">MASK MODE ONLY</span>
+                    <span class="formula-math" id="hbStretchFormulaDisplay">Stretch Scale = Proj W (1080) ÷ Slice W (360) = 3.000x @ 90°</span>
+                  </div>
+                  <div class="control-hint" style="margin-top: 6px;">
+                    Calculates <code>com.alightcreative.effects.stretch2</code> from project resolution and slice dimensions.
+                  </div>
+                  <div class="control-group" style="margin-top: 10px; margin-bottom: 0;">
+                    <label>Stretch Axis Mode</label>
+                    <div class="toggle-group" id="hbStretchModeToggle">
+                      <button class="toggle-btn active" data-value="auto" type="button">Auto</button>
+                      <button class="toggle-btn" data-value="horizontal" type="button">90° Horiz</button>
+                      <button class="toggle-btn" data-value="vertical" type="button">0° Vert</button>
+                      <button class="toggle-btn" data-value="manual" type="button">Manual</button>
+                    </div>
+                  </div>
+                  <div id="hbManualStretchControls" style="display: none; margin-top: 8px;">
+                    <div class="solid-size-row">
+                      <div class="input-group">
+                        <input type="number" id="hbManualAngle" value="90" step="any">
+                        <div class="input-suffix">Deg</div>
+                      </div>
+                      <div class="input-group">
+                        <input type="number" id="hbManualScale" value="3.0" step="0.01">
+                        <div class="input-suffix">Scale</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="section-block stage">
+                <div class="section-header"><span class="stage-num">T</span>Timing &amp; Stagger</div>
+                <div class="control-group">
+                  <label>All Layers Start</label>
+                  <input type="text" id="hbAllStart" value="00:00:00" class="time-input" placeholder="MM:SS:FF">
+                </div>
+                <div class="control-group">
+                  <label>First Layer Ends</label>
+                  <input type="text" id="hbFirstEnd" value="00:02:00" class="time-input" placeholder="MM:SS:FF">
+                </div>
+                <div class="control-group" style="margin-bottom: 0;">
+                  <label>Last Layer Ends</label>
+                  <input type="text" id="hbLastEnd" value="00:04:00" class="time-input" placeholder="MM:SS:FF">
+                </div>
+              </div>
+
+              <div class="section-block stage">
+                <div class="section-header"><span class="stage-num">P1</span>Position (vec3)</div>
+                <div class="control-group">
+                  <label>Start Position (X, Y, Z)</label>
+                  <div class="solid-size-row">
+                    <div class="input-group"><input type="number" id="hbPosStartX" value="0" step="any"><div class="input-suffix">X</div></div>
+                    <div class="input-group"><input type="number" id="hbPosStartY" value="0" step="any"><div class="input-suffix">Y</div></div>
+                    <div class="input-group"><input type="number" id="hbPosStartZ" value="0" step="any"><div class="input-suffix">Z</div></div>
+                  </div>
+                </div>
+                <div class="control-group">
+                  <label>End Position (X, Y, Z)</label>
+                  <div class="solid-size-row">
+                    <div class="input-group"><input type="number" id="hbPosEndX" value="0" step="any"><div class="input-suffix">X</div></div>
+                    <div class="input-group"><input type="number" id="hbPosEndY" value="100" step="any"><div class="input-suffix">Y</div></div>
+                    <div class="input-group"><input type="number" id="hbPosEndZ" value="-25" step="any"><div class="input-suffix">Z</div></div>
+                  </div>
+                </div>
+                <div class="control-group" style="margin-bottom: 0;">
+                  <label>Position Easing</label>
+                  <button class="open-graph-btn" id="hbPosEasingBtn" type="button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    Edit Bezier Curve
+                  </button>
+                </div>
+              </div>
+
+              <div class="section-block stage">
+                <div class="section-header"><span class="stage-num">P2</span>Orientation (quat Euler)</div>
+                <div class="control-group">
+                  <label>Start Orientation (X, Y, Z)</label>
+                  <div class="solid-size-row">
+                    <div class="input-group"><input type="number" id="hbOrientStartX" value="0" step="any"><div class="input-suffix">X</div></div>
+                    <div class="input-group"><input type="number" id="hbOrientStartY" value="0" step="any"><div class="input-suffix">Y</div></div>
+                    <div class="input-group"><input type="number" id="hbOrientStartZ" value="0" step="any"><div class="input-suffix">Z</div></div>
+                  </div>
+                </div>
+                <div class="control-group">
+                  <label>End Orientation (X, Y, Z)</label>
+                  <div class="solid-size-row">
+                    <div class="input-group"><input type="number" id="hbOrientEndX" value="0" step="any"><div class="input-suffix">X</div></div>
+                    <div class="input-group"><input type="number" id="hbOrientEndY" value="180" step="any"><div class="input-suffix">Y</div></div>
+                    <div class="input-group"><input type="number" id="hbOrientEndZ" value="0" step="any"><div class="input-suffix">Z</div></div>
+                  </div>
+                </div>
+                <div class="control-group" style="margin-bottom: 0;">
+                  <label>Orientation Easing</label>
+                  <button class="open-graph-btn" id="hbOrientEasingBtn" type="button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    Edit Bezier Curve
+                  </button>
+                </div>
+              </div>
+
+              <div class="section-block stage">
+                <div class="section-header"><span class="stage-num">P3</span>Rotation (vec3)</div>
+                <div class="control-group">
+                  <label>Start Rotation (X, Y, Z)</label>
+                  <div class="solid-size-row">
+                    <div class="input-group"><input type="number" id="hbRotateStartX" value="0" step="any"><div class="input-suffix">X</div></div>
+                    <div class="input-group"><input type="number" id="hbRotateStartY" value="0" step="any"><div class="input-suffix">Y</div></div>
+                    <div class="input-group"><input type="number" id="hbRotateStartZ" value="0" step="any"><div class="input-suffix">Z</div></div>
+                  </div>
+                </div>
+                <div class="control-group">
+                  <label>End Rotation (X, Y, Z)</label>
+                  <div class="solid-size-row">
+                    <div class="input-group"><input type="number" id="hbRotateEndX" value="0" step="any"><div class="input-suffix">X</div></div>
+                    <div class="input-group"><input type="number" id="hbRotateEndY" value="180" step="any"><div class="input-suffix">Y</div></div>
+                    <div class="input-group"><input type="number" id="hbRotateEndZ" value="0" step="any"><div class="input-suffix">Z</div></div>
+                  </div>
+                </div>
+                <div class="control-group" style="margin-bottom: 0;">
+                  <label>Rotation Easing</label>
+                  <button class="open-graph-btn" id="hbRotateEasingBtn" type="button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    Edit Bezier Curve
+                  </button>
+                </div>
+              </div>
+
+              <div class="section-block stage">
+                <div class="section-header"><span class="stage-num">P4</span>Width &amp; Height</div>
+                <div class="control-group">
+                  <label>Width (Start → End)</label>
+                  <div class="solid-size-row">
+                    <div class="input-group"><input type="number" id="hbWidthStart" value="1.0" step="0.01"><div class="input-suffix">Start</div></div>
+                    <div class="input-group"><input type="number" id="hbWidthEnd" value="1.0" step="0.01"><div class="input-suffix">End</div></div>
+                  </div>
+                </div>
+                <div class="control-group">
+                  <label>Height (Start → End)</label>
+                  <div class="solid-size-row">
+                    <div class="input-group"><input type="number" id="hbHeightStart" value="1.0" step="0.01"><div class="input-suffix">Start</div></div>
+                    <div class="input-group"><input type="number" id="hbHeightEnd" value="1.0" step="0.01"><div class="input-suffix">End</div></div>
+                  </div>
+                </div>
+                <div class="control-group" style="margin-bottom: 0;">
+                  <label>Dimensions Easing</label>
+                  <button class="open-graph-btn" id="hbGeomEasingBtn" type="button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    Edit Bezier Curve
+                  </button>
+                </div>
+              </div>
+
+              <div class="section-block stage">
+                <div class="section-header"><span class="stage-num">FX</span>Hollow Box Volume</div>
+                <div class="solid-size-row">
+                  <div class="input-group">
+                    <input type="number" id="hbDepth" value="0.01" step="0.01">
+                    <div class="input-suffix">Depth</div>
+                  </div>
+                  <div class="input-group">
+                    <input type="number" id="hbScale" value="1.0" step="0.01">
+                    <div class="input-suffix">Scale</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Global Beat Timing -->
+            <div id="globalTimingControls" class="reveal-box-plain">
+              <div class="beat-track">
+                <div class="control-group beat">
+                  <label><span class="beat-dot"></span>Beat 1 · All Start</label>
+                  <input type="text" id="beat1" value="00:00:00" class="time-input" placeholder="MM:SS:FF">
+                </div>
+                <div class="control-group beat">
+                  <label><span class="beat-dot"></span>Beat 2 · First Layer Ends</label>
+                  <input type="text" id="beat2" value="00:02:00" class="time-input" placeholder="MM:SS:FF">
+                </div>
+                <div class="control-group beat">
+                  <label><span class="beat-dot"></span>Beat 3 · Last Layer Ends</label>
+                  <input type="text" id="beat3" value="00:04:00" class="time-input" placeholder="MM:SS:FF">
+                </div>
+              </div>
+            </div>
+
+            <div class="control-group" id="autoFixPivotControlGroup">
+              <label>
+                Auto-Center Slice Pivot
+                <span class="badge" id="autoFixPivotBadge">ALL ANGLES</span>
+              </label>
+              <div class="toggle-group" id="autoFixPivotToggle">
+                <button class="toggle-btn active" data-value="on" type="button">On</button>
+                <button class="toggle-btn" data-value="off" type="button">Off</button>
+              </div>
+              <div class="control-hint">Rotates each wipe slice around its own center instead of the canvas origin.</div>
+            </div>
+
+            <div class="control-group" style="margin-bottom: 0;">
+              <label>Global Flip Pivot</label>
+              <div class="solid-size-row">
+                <div class="input-group" style="flex:1">
+                  <input type="number" id="flipPivotX" value="0" step="1" title="Pivot X">
+                  <div class="input-suffix">PX</div>
+                </div>
+                <div class="input-group" style="flex:1">
+                  <input type="number" id="flipPivotY" value="0" step="1" title="Pivot Y">
+                  <div class="input-suffix">PY</div>
+                </div>
+              </div>
+            </div>
+          </div></div>
+        </div>
+
+        <!-- Module 04: Sections -->
+        <div class="module open" data-module>
+          <button class="module-head" type="button" aria-expanded="true">
+            <span class="module-index">04</span>
+            <span class="module-title">Section Stack<small>Groups, sub-sections, position keyframes</small></span>
+            <span class="module-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="module-body"><div class="module-inner">
+            <div class="control-group">
+              <label for="sectionCount">
+                Section Count
+                <span class="badge">1–10 GROUPS</span>
+              </label>
+              <div class="stepper-input">
+                <button class="stepper-btn" id="sectionMinus" type="button" aria-label="Decrease sections">−</button>
+                <input type="number" id="sectionCount" min="1" max="10" value="1">
+                <button class="stepper-btn" id="sectionPlus" type="button" aria-label="Increase sections">+</button>
+              </div>
+              <div class="control-hint">Split slices into independent groups with separate timing, direction, and slide motion.</div>
+            </div>
+
+            <div id="sectionsContainer"></div>
+
+            <div class="control-group" style="margin-bottom: 0;">
+              <button id="openGraphBtn" class="open-graph-btn primary" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+                Edit Global Easing Curve
+              </button>
+            </div>
+          </div></div>
+        </div>
+
+        <!-- Module 05: Wipe Controls -->
+        <div class="module open" data-module>
+          <button class="module-head" type="button" aria-expanded="true">
+            <span class="module-index">05</span>
+            <span class="module-title">Wipe Parameters<small>Origin, range, angle, feather</small></span>
+            <span class="module-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="module-body"><div class="module-inner">
+            <div class="control-group">
+              <label>Wipe Origin <span class="badge">CENTERED</span></label>
+              <div class="readonly-row">
+                <div class="readonly-field">
+                  <span class="field-label">X</span>
+                  <span class="field-value" id="wipeXDisplay">540</span>
+                </div>
+                <div class="readonly-field">
+                  <span class="field-label">Y</span>
+                  <span class="field-value" id="wipeYDisplay">675</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label>Normalized Span <span class="badge">0–100%</span></label>
+              <div class="readonly-row">
+                <div class="readonly-field">
+                  <span class="field-label">Start</span>
+                  <span class="field-value" id="wipeStartDisplay">0</span>
+                </div>
+                <div class="readonly-field">
+                  <span class="field-label">End</span>
+                  <span class="field-value" id="wipeEndDisplay">100</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label for="wipeAngle">Wipe Angle</label>
+              <div class="range-row">
+                <input type="range" id="wipeAngle" min="0" max="360" value="0" step="1">
+                <span class="range-value" id="wipeAngleValue">0°</span>
+              </div>
+              <div class="pill-row" id="wipeAnglePresets" style="margin-top: 8px;">
+                <button type="button" class="preset-pill active" data-angle="0">0° Vert</button>
+                <button type="button" class="preset-pill" data-angle="45">45° Diag ↗</button>
+                <button type="button" class="preset-pill" data-angle="51.34">51.3° 4:5</button>
+                <button type="button" class="preset-pill" data-angle="90">90° Horiz</button>
+                <button type="button" class="preset-pill" data-angle="135">135° Diag ↘</button>
+              </div>
+            </div>
+
+            <div class="control-group" style="margin-bottom: 0;">
+              <label for="wipeSoftness">Edge Feather</label>
+              <div class="range-row">
+                <input type="range" id="wipeSoftness" min="0" max="100" value="0" step="1">
+                <span class="range-value" id="wipeSoftnessValue">0</span>
+              </div>
+            </div>
+          </div></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Center Column: Canvas Monitor & Transport -->
+    <section class="panel preview-panel" id="preview-panel">
+      <div class="panel-header">
+        <h2>
+          <span class="ph-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+          </span>
+          <span class="ph-text">Canvas Monitor<small>Orthographic slice preview</small></span>
+        </h2>
+        <div class="preview-dimensions" id="previewDimensions">1080 × 1350</div>
+      </div>
+
+      <!-- Canvas Stage -->
+      <div class="canvas-container" id="canvasContainer">
+        <div class="stage-guides" aria-hidden="true">
+          <span class="crop-mark tl"></span>
+          <span class="crop-mark tr"></span>
+          <span class="crop-mark bl"></span>
+          <span class="crop-mark br"></span>
+        </div>
+        <canvas id="previewCanvas"></canvas>
+        <div class="crosshair-label" id="crosshairLabel">Center: 540, 675</div>
+      </div>
+
+      <!-- Playback Transport -->
+      <div class="playback-controls">
+        <button id="playBtn" type="button" title="Play or pause preview (Space)">
+          <svg id="playIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+        </button>
+        <div class="scrubber-wrap">
+          <input type="range" id="playbackScrubber" min="0" max="1" step="0.001" value="0" aria-label="Timeline scrubber">
+        </div>
+        <span id="playbackTimeDisplay">0.00s</span>
+      </div>
+
+      <!-- Collapsible Math & Slice Breakdown -->
+      <div class="formulas-card" id="formulasCard">
+        <button class="formulas-toggle-head" id="formulasToggleBtn" type="button" aria-expanded="true">
+          <span class="ft-left">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/>
+            </svg>
+            <span>Slice Math &amp; Coordinates</span>
+          </span>
+          <span class="module-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="formula-content" id="formulaContent"></div>
+      </div>
+    </section>
+
+    <!-- Right Column: Layer Stack & XML Export -->
+    <section class="panel data-panel" id="data-panel">
+      <div class="panel-header">
+        <h2>
+          <span class="ph-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
+            </svg>
+          </span>
+          <span class="ph-text">Layer Stack &amp; Export<small>Computed transforms and XML</small></span>
+        </h2>
+      </div>
+
+      <div class="table-container" id="tableContainer">
+        <table id="layerTable">
+          <thead>
+            <tr>
+              <th>Cut</th>
+              <th>Loc X</th>
+              <th>Loc Y</th>
+              <th id="thCol4">Size (W×H)</th>
+              <th id="thCol5">Scale X</th>
+              <th id="thCol6">Scale Y</th>
+            </tr>
+          </thead>
+          <tbody id="layerTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="xml-section">
+        <div class="xml-header">
+          <h3>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+            </svg>
+            Alight Motion XML
+          </h3>
+          <div class="xml-actions">
+            <button class="icon-btn" id="copySettingsBtn" type="button" title="Copy preset string">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+              </svg>
+            </button>
+            <button class="icon-btn" id="importSettingsBtn" type="button" title="Load preset string">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+              </svg>
+            </button>
+            <div class="xml-actions-divider"></div>
+            <button class="icon-btn" id="toggleXmlBtn" type="button" title="Show or hide XML source">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+            <button class="icon-btn" id="copyXmlBtn" type="button" title="Copy XML to clipboard">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+            <button class="icon-btn primary-icon-btn" id="downloadXmlBtn" type="button" title="Download XML file">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mobile Export Card -->
+        <div class="mobile-xml-hero" id="mobileXmlHero">
+          <button class="mobile-hero-dl-btn" id="mobileHeroDlBtn" type="button" aria-label="Download Alight Motion XML">
+            <div class="m-btn-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            </div>
+            <div class="m-btn-text">
+              <span class="m-btn-title">Download Alight Motion XML</span>
+              <span class="m-btn-sub" id="mobileHeroSpecs">5 Layers · 1080 × 1350 · Ready</span>
+            </div>
+          </button>
+          <div class="mobile-quick-actions">
+            <button class="m-action-pill" id="mobileCopyXmlBtn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              <span>Copy XML</span>
+            </button>
+            <button class="m-action-pill" id="mobileToggleXmlBtn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <span>Inspect Code</span>
+            </button>
+          </div>
+          <div class="mobile-quick-actions">
+            <button class="m-action-pill" id="mobileCopySettingsBtn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+              </svg>
+              <span>Copy Preset</span>
+            </button>
+            <button class="m-action-pill" id="mobileImportSettingsBtn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <line x1="9" y1="15" x2="15" y2="15"/>
+              </svg>
+              <span>Load Preset</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="xml-code-container" id="xmlCodeContainer" style="display: none;">
+          <pre id="xmlCode"></pre>
+        </div>
+        <div class="xml-standby" id="xmlStandbyBanner">
+          <span class="standby-dot" aria-hidden="true"></span>
+          <div class="standby-text">
+            <strong>XML ready to export</strong>
+            <span>Click the eye icon to inspect source or download directly.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Workspace 2: XML Media Layer Converter -->
+    <section class="panel converter-panel" id="converter-panel" style="display: none; grid-column: 1 / -1;">
+      <div class="panel-header">
+        <h2>
+          <span class="ph-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+          </span>
+          <span class="ph-text">Media Layer Converter<small>Convert color shapes into replaceable Alight Motion media slots</small></span>
+        </h2>
+        <div class="converter-header-actions">
+          <button class="ph-btn" id="btnCopyConvertedXml" type="button" title="Copy transformed XML">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Copy XML
+          </button>
+          <button class="ph-btn primary" id="btnDownloadConvertedXml" type="button" title="Download transformed XML">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download XML
+          </button>
+        </div>
+      </div>
+
+      <div class="converter-layout">
+        <!-- Column 1: Import & Media Settings -->
+        <div class="converter-col import-col">
+          <div class="converter-card">
+            <div class="card-title">
+              <span class="step-index-tag">01</span>
+              Import XML File
+            </div>
+
+            <div class="xml-dropzone" id="xmlDropzone">
+              <input type="file" id="xmlFileInput" accept=".xml,text/xml,application/xml" style="display: none;">
+              <div class="dropzone-icon">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="12" y1="18" x2="12" y2="12"/>
+                  <polyline points="9 15 12 12 15 15"/>
+                </svg>
+              </div>
+              <div class="dropzone-text">
+                <strong>Drop an Alight Motion XML file</strong>
+                <span>or choose a file or paste raw XML text</span>
+              </div>
+              <div class="dropzone-actions">
+                <button class="btn-sub primary" id="btnBrowseXml" type="button">Choose File</button>
+                <button class="btn-sub" id="btnPasteXmlModal" type="button">Paste Text</button>
+              </div>
+            </div>
+
+            <div class="sample-pills">
+              <span class="sample-label">Samples:</span>
+              <button class="sample-pill-btn" id="btnLoadSample349" type="button">Project 349 (Wipe)</button>
+              <button class="sample-pill-btn" id="btnLoadSample294" type="button">Project 294 (Mask)</button>
+              <button class="sample-pill-btn" id="btnLoadStudioXml" type="button">Current Studio XML</button>
+            </div>
+
+            <div class="file-meta-banner" id="fileMetaBanner" style="display: none;">
+              <div class="fmeta-row">
+                <span class="fmeta-name" id="metaFileName">Project Name 349.xml</span>
+                <span class="badge" id="metaFileShapesCount">10 Shapes</span>
+              </div>
+              <div class="fmeta-specs">
+                <span id="metaDimensions">1080 × 1350</span> ·
+                <span id="metaFps">60 FPS</span> ·
+                <span id="metaDuration">13.05s</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="converter-card">
+            <div class="card-title">
+              <span class="step-index-tag">02</span>
+              Media Slot Options
+            </div>
+
+            <div class="control-group">
+              <label>Asset Format</label>
+              <div class="toggle-group" id="mediaTypeToggle">
+                <button class="toggle-btn active" data-value="image/png" type="button">Image (PNG)</button>
+                <button class="toggle-btn" data-value="video/mp4" type="button">Video (MP4)</button>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label for="targetMediaUri">Placeholder Asset URI</label>
+              <div class="input-group">
+                <input type="text" id="targetMediaUri" value="am-internal:///79E80CB55B8662B05AFDC24DB42B814BC455410A.PNG" placeholder="am-internal:///..." spellcheck="false">
+              </div>
+              <div class="control-hint">Triggers Alight Motion's Replace Media prompt when you import the project.</div>
+            </div>
+
+            <div class="control-group" id="maskSlicingControlGroup">
+              <label>
+                Mask Tile Alignment
+                <span class="badge" id="maskSlicingBadge">CONNECTED</span>
+              </label>
+              <div class="toggle-group" id="maskSlicingToggle">
+                <button class="toggle-btn active" data-value="connect" type="button">Connect Across Tiles</button>
+                <button class="toggle-btn" data-value="individual" type="button">Repeat Per Shape</button>
+              </div>
+              <div class="control-hint">Spans one image across all mask tiles using Group &amp; Mask coordinates.</div>
+            </div>
+
+            <div class="control-group" style="margin-bottom: 0;">
+              <label>Batch Selection</label>
+              <div class="batch-buttons-grid">
+                <button class="btn-sub" id="btnSelectAllLayers" type="button">Select All</button>
+                <button class="btn-sub" id="btnDeselectAllLayers" type="button">Clear All</button>
+                <button class="btn-sub" id="btnInvertSelection" type="button">Invert</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column 2: Layer Checklist -->
+        <div class="converter-col layers-col">
+          <div class="converter-card full-height">
+            <div class="card-title flex-between">
+              <div>
+                <span class="step-index-tag">03</span>
+                Shapes in Scene
+              </div>
+              <div class="layers-counter" id="layersCounterBadge">
+                <span class="count-highlight" id="selectedCountText">0</span> / <span id="totalCountText">0</span> media
+              </div>
+            </div>
+
+            <div class="layer-filter-bar">
+              <div class="search-input-group">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text" id="layerSearchInput" placeholder="Filter by label, ID, or effect...">
+              </div>
+            </div>
+
+            <div class="layers-empty-state" id="layersEmptyState">
+              <h3>No XML loaded</h3>
+              <p>Choose an XML file, paste XML text, or load one of the sample projects to list its shapes.</p>
+            </div>
+
+            <div class="converter-layers-list" id="converterLayersList" style="display: none;"></div>
+          </div>
+        </div>
+
+        <!-- Column 3: Transformed Output -->
+        <div class="converter-col output-col">
+          <div class="converter-card full-height">
+            <div class="card-title flex-between">
+              <div>
+                <span class="step-index-tag">04</span>
+                Converted XML
+              </div>
+              <div class="xml-actions-inline">
+                <button class="btn-sub icon-only" id="btnCopyInlineXml" type="button" title="Copy XML">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="converter-xml-preview" id="converterXmlPreview">
+              <pre><code id="convertedXmlCode">&lt;!-- Load an XML file to inspect converted output --&gt;</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Workspace 3: Hollow Box Maker -->
+    <section class="panel hollowbox-panel" id="hollowboxPanel" style="display: none; grid-column: 1 / -1;">
+      <div class="hollowbox-layout">
+
+        <!-- Column 1: Hierarchy, Beats & Media -->
+        <div class="hb-col config-col">
+          <div class="hb-card">
+            <div class="card-title flex-between">
+              <div>
+                <span class="step-index-tag">01</span>
+                Scene Hierarchy
+              </div>
+              <button class="preset-pill active" id="btnHbReset304" type="button" title="Restore Project 304 defaults">Reset 304</button>
+            </div>
+
+            <div class="control-group">
+              <label>Box Structure</label>
+              <div class="toggle-group" id="hbStructureToggle">
+                <button class="toggle-btn active" data-value="nested" type="button">Nested (Box in Box)</button>
+                <button class="toggle-btn" data-value="settingsOnly" type="button">Inner Only</button>
+                <button class="toggle-btn" data-value="originalOnly" type="button">Outer Only</button>
+              </div>
+              <div class="control-hint">Project 304 layout: Outer Original HB shell plus inner Settings box at (0, 100, -25), scale 0.50.</div>
+            </div>
+
+            <div class="control-group">
+              <label>Animated Target</label>
+              <div class="toggle-group" id="hbTargetToggle">
+                <button class="toggle-btn active" data-value="settings" type="button">Inner (Settings)</button>
+                <button class="toggle-btn" data-value="original" type="button">Outer (Original)</button>
+                <button class="toggle-btn" data-value="both" type="button">Both</button>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label>
+                Step Count
+                <span class="badge" id="hbStepBadge">4 STEPS (4 BEATS)</span>
+              </label>
+              <div class="toggle-group" id="hbStepCountToggle">
+                <button class="toggle-btn" data-value="2" type="button">2 Steps</button>
+                <button class="toggle-btn active" data-value="4" type="button">4 Steps</button>
+              </div>
+              <div class="control-hint">Aligns keyframes to beat bookmarks. Span two beats to curve velocity across the middle beat.</div>
+            </div>
+
+            <div class="field-grid two-col-grid">
+              <div class="control-group" style="margin-bottom: 0;">
+                <label for="hbProjectDuration">Duration</label>
+                <input type="text" id="hbProjectDuration" value="00:02:00" class="styled-input">
+              </div>
+              <div class="control-group" style="margin-bottom: 0;">
+                <label>Canvas</label>
+                <div class="readonly-static-box">1080 × 1350 (4:5)</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hb-card">
+            <div class="card-title flex-between">
+              <div>
+                <span class="step-index-tag">02</span>
+                Beat Bookmarks
+              </div>
+              <span class="fmeta-specs">MM:SS:FF @ 60fps</span>
+            </div>
+
+            <div class="beats-list" id="hbBeatsList"></div>
+
+            <div class="quick-tempo-row">
+              <button class="sample-pill-btn" type="button" data-hb-bpm="120">120 BPM</button>
+              <button class="sample-pill-btn" type="button" data-hb-bpm="130">130 BPM</button>
+              <button class="sample-pill-btn" type="button" data-hb-bpm="140">140 BPM</button>
+              <button class="sample-pill-btn" type="button" data-hb-bpm="150">150 BPM</button>
+              <button class="sample-pill-btn" type="button" data-hb-bpm="304">304 Timing</button>
+            </div>
+          </div>
+
+          <div class="hb-card">
+            <div class="card-title">
+              <span class="step-index-tag">03</span>
+              Video Fill &amp; Stretch2
+            </div>
+            <div class="control-group">
+              <label for="hbMediaUri">Video Asset URI</label>
+              <input type="text" id="hbMediaUri" value="am-internal:///BBB32FC1DE51537203F258871E0D8039FC5960A0.MP4" class="styled-input mono-sm" spellcheck="false">
+            </div>
+            <div class="field-grid two-col-grid">
+              <div class="control-group" style="margin-bottom: 0;">
+                <label for="hbStretchAngle">Stretch Angle</label>
+                <input type="number" id="hbStretchAngle" value="90" class="styled-input">
+              </div>
+              <div class="control-group" style="margin-bottom: 0;">
+                <label for="hbStretchScale">Stretch Scale</label>
+                <input type="number" id="hbStretchScale" value="1.25" step="0.05" class="styled-input">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column 2: Per-Step Variables & Easing -->
+        <div class="hb-col steps-col">
+          <div class="hb-card full-height">
+            <div class="card-title flex-between wrap-gap">
+              <div>
+                <span class="step-index-tag">04</span>
+                Step Keyframes
+              </div>
+              <div class="step-nav-pills" id="hbStepPills"></div>
+            </div>
+
+            <div class="hb-steps-container" id="hbStepsContainer"></div>
+          </div>
+        </div>
+
+        <!-- Column 3: 3D Wireframe Stage & XML Export -->
+        <div class="hb-col preview-col">
+          <div class="hb-card hb-viewport-card">
+            <div class="card-title flex-between">
+              <div>
+                <span class="step-index-tag">3D</span>
+                Wireframe Stage
+              </div>
+              <div class="badge" id="hbPreviewHudTag">STEP 1</div>
+            </div>
+
+            <div class="hb-canvas-wrap" id="hbCanvasWrap">
+              <canvas id="hbPreviewCanvas" width="480" height="340"></canvas>
+              <div class="hb-canvas-telemetry">
+                <span id="hbTelemPos">POS: 0, 100, -25</span>
+                <span id="hbTelemRot">ROT: 0°, 0°, 0°</span>
+                <span id="hbTelemDims">W:1.0 H:1.0 D:1.0</span>
+              </div>
+            </div>
+
+            <div class="hb-scrub-controls">
+              <button class="btn-sub icon-only" id="hbPlayBtn" type="button" title="Play or pause 3D preview">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+              </button>
+              <div class="hb-timeline-bar-wrap">
+                <input type="range" id="hbTimelineScrubber" min="0" max="2000" value="0" step="1" aria-label="Hollow Box timeline scrubber">
+                <div class="hb-beat-markers" id="hbBeatMarkers"></div>
+              </div>
+              <span class="timecode" id="hbPlayheadTimecode">0.00s</span>
+            </div>
+          </div>
+
+          <div class="hb-card full-height" style="flex: 1;">
+            <div class="card-title flex-between">
+              <div>
+                <span class="step-index-tag">XML</span>
+                Hollow Box Output
+              </div>
+              <div class="xml-actions-inline">
+                <button class="btn-sub" id="hbCopyXmlBtn" type="button" title="Copy Hollow Box XML">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                  Copy
+                </button>
+                <button class="btn-sub primary" id="hbDownloadXmlBtn" type="button" title="Download Hollow Box XML">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  Download
+                </button>
+              </div>
+            </div>
+
+            <div class="converter-xml-preview" style="max-height: 360px;">
+              <pre><code id="hbXmlCodeBlock">&lt;!-- Hollow Box XML --&gt;</code></pre>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- Paste XML Modal -->
+  <div class="modal-overlay" id="pasteXmlModal" style="display: none;">
+    <div class="modal-dialog">
+      <div class="graph-modal-header">
+        <h3>Paste Alight Motion XML</h3>
+        <button class="graph-modal-close" id="closePasteXmlBtn" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body-pad">
+        <p class="modal-desc">Paste the full XML text exported from Alight Motion to list and convert its shape layers.</p>
+        <textarea id="pasteXmlTextarea" rows="10" class="modal-textarea" placeholder="<?xml version='1.0' encoding='UTF-8' ?>&#10;<scene ..."></textarea>
+        <div class="modal-footer-actions">
+          <button class="btn-sub" id="cancelPasteXmlBtn" type="button">Cancel</button>
+          <button class="btn-sub primary" id="confirmPasteXmlBtn" type="button">Load XML</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Preset String Modal (Replaces native prompt for mobile reliability) -->
+  <div class="modal-overlay" id="importSettingsModal" style="display: none;">
+    <div class="modal-dialog">
+      <div class="graph-modal-header">
+        <h3>Load Studio Preset</h3>
+        <button class="graph-modal-close" id="closeImportSettingsBtn" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body-pad">
+        <p class="modal-desc">Paste a Base64 preset string copied from Flippy Studio to restore all parameters and sections.</p>
+        <textarea id="importSettingsTextarea" rows="5" class="modal-textarea" placeholder="Paste preset string here..." spellcheck="false"></textarea>
+        <div class="modal-footer-actions">
+          <button class="btn-sub" id="cancelImportSettingsBtn" type="button">Cancel</button>
+          <button class="btn-sub primary" id="confirmImportSettingsBtn" type="button">Apply Preset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast" role="status" aria-live="polite">
+    <span class="toast-icon" aria-hidden="true"></span>
+    <div class="toast-message" id="toastMessage">Copied XML to clipboard</div>
+  </div>
+
+  <!-- Bezier Curve Editor Modal -->
+  <div class="modal-overlay graph-modal" id="graphModal" style="display: none;">
+    <div class="graph-modal-content">
+      <div class="graph-modal-header">
+        <h3>Easing Curve Editor</h3>
+        <div class="graph-modal-actions">
+          <a class="graph-modal-link" href="Graph.html" target="_blank" rel="noopener">Full Tab ↗</a>
+          <button class="btn-sub primary graph-done-btn" id="doneGraphBtn" type="button">Done</button>
+          <button class="graph-modal-close" id="closeGraphBtn" type="button" aria-label="Close curve editor">&times;</button>
+        </div>
+      </div>
+      <div class="graph-modal-body">
+        <iframe id="graphIframe" src="Graph.html" title="Easing curve editor"></iframe>
+        <iframe id="graphIframe2" src="Graph2.html" title="Secondary easing curve editor" style="display: none;"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Workspace Shell (<= 860px) -->
+  <div class="mobile-shell" id="mobileShell">
+    <div class="mobile-header">
+      <div class="mobile-logo">
+        <div class="brand-shutter small" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <span>Flippy <em>v4</em></span>
+      </div>
+      <div class="mobile-header-right">
+        <button class="theme-switch-btn small" id="mobileThemeToggleBtn" type="button" aria-label="Switch color theme">
+          <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="mobile-header-dl-btn" id="mobileHeaderDlBtn" type="button" aria-label="Export Alight Motion XML">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span class="dl-text" id="mobileHeaderDlText">Export XML</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="mobile-tab-content active" id="mobileTabConfig">
+      <div class="mobile-tab-inner" id="mobileConfigSlot"></div>
+    </div>
+
+    <div class="mobile-tab-content" id="mobileTabPreview">
+      <div class="mobile-tab-inner" id="mobilePreviewSlot"></div>
+    </div>
+
+    <div class="mobile-tab-content" id="mobileTabData">
+      <div class="mobile-tab-inner" id="mobileDataSlot"></div>
+    </div>
+
+    <div class="mobile-tab-content" id="mobileTabConverter">
+      <div class="mobile-tab-inner" id="mobileConverterSlot"></div>
+    </div>
+
+    <div class="mobile-tab-content" id="mobileTabHollowBox">
+      <div class="mobile-tab-inner" id="mobileHollowBoxSlot"></div>
+    </div>
+
+    <nav class="mobile-tab-bar" id="mobileTabBar" aria-label="Mobile workspace navigation">
+      <button class="mobile-tab active" data-tab="mobileTabConfig" type="button">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
+          <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
+          <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
+          <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
+        </svg>
+        <span>Setup</span>
+      </button>
+      <button class="mobile-tab" data-tab="mobileTabPreview" type="button">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+        <span>Monitor</span>
+      </button>
+      <button class="mobile-tab" data-tab="mobileTabData" type="button">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
+        </svg>
+        <span>Export</span>
+      </button>
+      <button class="mobile-tab" data-tab="mobileTabConverter" type="button">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+        <span>Convert</span>
+      </button>
+    </nav>
+  </div>
+
+  <script src="app.js?v=4.8"></script>
+  <script src="fx.js?v=4.8"></script>
+</body>
+</html>
