@@ -690,11 +690,11 @@
           } else { // 'wipe' or 'boxv2' method
             // Determine effective wipe angle
             let effectiveWipeAngle = 0;
-            if (subDir === 'diagonal' || state.splitDirection === 'diagonal') {
+            if (subDir === 'diagonal') {
               effectiveWipeAngle = (state.wipeAngle !== undefined && state.wipeAngle !== 0 && state.wipeAngle !== 90 && state.wipeAngle !== 135)
                 ? state.wipeAngle
                 : 45;
-            } else if (subDir === 'diagonal-desc' || state.splitDirection === 'diagonal-desc') {
+            } else if (subDir === 'diagonal-desc') {
               effectiveWipeAngle = (state.wipeAngle !== undefined && state.wipeAngle !== 0 && state.wipeAngle !== 90 && state.wipeAngle !== 45)
                 ? state.wipeAngle
                 : 135;
@@ -993,6 +993,27 @@
       const layerLeft = (currentLocX * scaleF) - (layerW / 2);
       const layerTop = (currentLocY * scaleF) - (layerH / 2);
 
+      if (state.wipeMethod === 'wipe' || state.wipeMethod === 'boxv2') {
+        const isDiagLayer = layer.isDiagonal || (layer.wipeAngle !== undefined && layer.wipeAngle % 90 !== 0);
+        if (isDiagLayer || (state.animType === 'flip' && layer.flipAxis % 90 !== 0)) {
+          const solidW = state.solidWidth * scaleF;
+          const solidH = state.solidHeight * scaleF;
+          const solidLeft = (currentLocX * scaleF) - (solidW / 2);
+          const solidTop = (currentLocY * scaleF) - (solidH / 2);
+          const wxStart = layer.wipeXStart !== undefined ? layer.wipeXStart : 0;
+          const wxEnd = layer.wipeXEnd !== undefined ? layer.wipeXEnd : 1;
+          const wyStart = layer.wipeYStart !== undefined ? layer.wipeYStart : 0;
+          const wyEnd = layer.wipeYEnd !== undefined ? layer.wipeYEnd : 1;
+          const boundX1 = solidLeft + wxStart * solidW;
+          const boundX2 = solidLeft + wxEnd * solidW;
+          const boundY1 = solidTop + wyStart * solidH;
+          const boundY2 = solidTop + wyEnd * solidH;
+          ctx.beginPath();
+          ctx.rect(boundX1, boundY1, Math.max(0.1, boundX2 - boundX1), Math.max(0.1, boundY2 - boundY1));
+          ctx.clip();
+        }
+      }
+
       // --- 3D FLIP/CUBE/BOX V2 EMULATION ---
       if (state.animType === 'flip' || state.animType === 'cube' || state.animType === 'box' || state.animType === 'hollowbox' || isBoxV2Active) {
         // The Cube & Box V2 effects always rotate around the layer's center,
@@ -1018,10 +1039,10 @@
           ctx.transform(m00, m10, m01, m11, 0, 0);
         } else if (state.animType === 'flip') {
           const axisRad = (layer.flipAxis * Math.PI) / 180;
-          ctx.rotate(-axisRad);
+          ctx.rotate(axisRad);
           const flipRad = (flipAngle * Math.PI) / 180;
           ctx.scale(Math.cos(flipRad), 1);
-          ctx.rotate(axisRad);
+          ctx.rotate(-axisRad);
         } else if (state.animType === 'cube') {
           // True 3D rotation projected orthographically onto the canvas:
           //   X = tilt up/down (foreshortens vertically)
@@ -1192,7 +1213,12 @@
         }
 
         ctx.fillStyle = getLayerColor(idx, layers.length, layer.sectionIdx, state.sectionCount);
-        ctx.fillRect(solidLeft, solidTop, solidW, solidH);
+        if (isDiag) {
+          const R = Math.hypot(solidW, solidH) * 1.5;
+          ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+        } else {
+          ctx.fillRect(solidLeft, solidTop, solidW, solidH);
+        }
 
         // Center label in the actual visible slice area
         const wxStart = layer.wipeXStart !== undefined ? layer.wipeXStart : 0;
@@ -2153,11 +2179,13 @@
 
     } else {
       // Wipe Effect Mode
-      const isDiag = state.splitDirection.includes('diagonal') || (state.wipeAngle % 90 !== 0 && state.wipeAngle !== 0);
-      const thetaDeg = state.splitDirection === 'diagonal' ? (state.wipeAngle || 45)
+      const thetaDeg = (layers.length > 0 && layers[0].wipeAngle !== undefined)
+        ? layers[0].wipeAngle
+        : (state.splitDirection === 'diagonal' ? (state.wipeAngle || 45)
         : (state.splitDirection === 'diagonal-desc' ? (state.wipeAngle === 45 ? 135 : (state.wipeAngle || 135))
         : (state.splitDirection === 'horizontal' ? 90
-        : (state.splitDirection === 'vertical' ? 0 : (state.wipeAngle || 0))));
+        : (state.splitDirection === 'vertical' ? 0 : (state.wipeAngle || 0)))));
+      const isDiag = (thetaDeg % 90 !== 0) || state.splitDirection.includes('diagonal');
       const thetaRad = (thetaDeg * Math.PI) / 180;
       const W = state.solidWidth;
       const H = state.solidHeight;
