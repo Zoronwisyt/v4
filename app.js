@@ -4247,6 +4247,10 @@
       }
       const mobileTabConv = document.getElementById('mobileTabConverter');
       const mobileConvBtn = document.querySelector('.mobile-tab[data-tab="mobileTabConverter"]');
+      const mobileFloatingInsp = document.getElementById('mobileFloatingInspector');
+      const mobileInspToggleBtn = document.getElementById('mobileInspectorToggleBtn');
+      if (mobileFloatingInsp) mobileFloatingInsp.classList.add('hidden-for-tab');
+      if (mobileInspToggleBtn) mobileInspToggleBtn.classList.remove('active');
       if (mobileConvBtn && mobileTabConv) {
         document.querySelectorAll('.mobile-tab').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.mobile-tab-content').forEach(tc => tc.classList.remove('active'));
@@ -4271,6 +4275,8 @@
       }
       const mobileTabHb = document.getElementById('mobileTabHollowBox');
       const mobileHbBtn = document.querySelector('.mobile-tab[data-tab="mobileTabHollowBox"]');
+      const mobileFloatingInsp = document.getElementById('mobileFloatingInspector');
+      if (mobileFloatingInsp) mobileFloatingInsp.classList.add('hidden-for-tab');
       if (mobileHbBtn && mobileTabHb) {
         document.querySelectorAll('.mobile-tab').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.mobile-tab-content').forEach(tc => tc.classList.remove('active'));
@@ -4291,13 +4297,21 @@
       if (dataPanelElem) dataPanelElem.style.display = '';
       if (converterPanelElem) converterPanelElem.style.display = 'none';
       if (hollowboxPanelElem) hollowboxPanelElem.style.display = 'none';
-      const mobileTabInsp = document.getElementById('mobileTabConfig');
-      const mobileInspBtn = document.querySelector('.mobile-tab[data-tab="mobileTabConfig"]');
-      if (mobileInspBtn && mobileTabInsp) {
+      const mobileTabStudio = document.getElementById('mobileTabPreview');
+      const mobileStudioBtn = document.querySelector('.mobile-tab[data-tab="mobileTabPreview"]');
+      const mobileFloatingInsp = document.getElementById('mobileFloatingInspector');
+      const mobileInspToggleBtn = document.getElementById('mobileInspectorToggleBtn');
+      if (mobileFloatingInsp) {
+        mobileFloatingInsp.classList.remove('hidden-for-tab');
+        if (mobileInspToggleBtn) {
+          mobileInspToggleBtn.classList.toggle('active', !mobileFloatingInsp.classList.contains('minimized'));
+        }
+      }
+      if (mobileStudioBtn && mobileTabStudio) {
         document.querySelectorAll('.mobile-tab').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.mobile-tab-content').forEach(tc => tc.classList.remove('active'));
-        mobileInspBtn.classList.add('active');
-        mobileTabInsp.classList.add('active');
+        mobileStudioBtn.classList.add('active');
+        mobileTabStudio.classList.add('active');
       }
       renderPreview();
     }
@@ -6711,8 +6725,8 @@
       if (controlsBody) mobileConfigSlot.appendChild(controlsBody);
       if (canvasContainer) mobilePreviewSlot.appendChild(canvasContainer);
       if (playbackControls) mobilePreviewSlot.appendChild(playbackControls);
-      if (formulasCard) mobilePreviewSlot.appendChild(formulasCard);
       if (xmlSection) mobileDataSlot.appendChild(xmlSection);
+      if (formulasCard) mobileDataSlot.appendChild(formulasCard);
       if (tableContainer) mobileDataSlot.appendChild(tableContainer);
       if (converterPanel && mobileConverterSlot) {
         converterPanel.style.display = 'block';
@@ -6819,9 +6833,212 @@
       });
     }
 
-    // Clean click-only mobile tab switching (zero touchend double-fire or scroll hijack)
+    // Clean click-only mobile tab switching + Floating Resizable Inspector
     const tabButtons = mobileTabBar.querySelectorAll('.mobile-tab');
     const tabContents = document.querySelectorAll('.mobile-tab-content');
+    const mobileFloatingInspector = document.getElementById('mobileFloatingInspector');
+    const mobileInspectorToggleBtn = document.getElementById('mobileInspectorToggleBtn');
+    const mfiResizeTop = document.getElementById('mfiResizeTop');
+    const mfiResizeCorner = document.getElementById('mfiResizeCorner');
+    const mfiHeader = document.getElementById('mfiHeader');
+    const mfiSizeBadge = document.getElementById('mfiSizeBadge');
+    const mfiSizeCycleBtn = document.getElementById('mfiSizeCycleBtn');
+    const mfiFoldAllBtn = document.getElementById('mfiFoldAllBtn');
+    const mfiMinimizeBtn = document.getElementById('mfiMinimizeBtn');
+
+    function setInspectorMinimized(minimized) {
+      if (!mobileFloatingInspector) return;
+      mobileFloatingInspector.classList.toggle('minimized', minimized);
+      if (mobileInspectorToggleBtn) {
+        const isHiddenForTab = mobileFloatingInspector.classList.contains('hidden-for-tab');
+        const isActive = !minimized && !isHiddenForTab;
+        mobileInspectorToggleBtn.classList.toggle('active', isActive);
+        mobileInspectorToggleBtn.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+      }
+    }
+
+    if (mobileInspectorToggleBtn) {
+      mobileInspectorToggleBtn.addEventListener('click', () => {
+        if (!mobileFloatingInspector) return;
+        const converterTab = document.getElementById('mobileTabConverter');
+        if (converterTab && converterTab.classList.contains('active')) {
+          // Switch back to Wipe Studio first and show floating Inspector
+          const studioBtn = mobileTabBar.querySelector('.mobile-tab[data-tab="mobileTabPreview"]');
+          if (studioBtn) studioBtn.click();
+          setInspectorMinimized(false);
+          return;
+        }
+        const isMin = mobileFloatingInspector.classList.contains('minimized');
+        setInspectorMinimized(!isMin);
+      });
+    }
+
+    if (mfiMinimizeBtn) {
+      mfiMinimizeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setInspectorMinimized(true);
+      });
+    }
+
+    if (mfiFoldAllBtn) {
+      mfiFoldAllBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const collapseBtn = document.getElementById('collapseAllBtn');
+        if (collapseBtn) collapseBtn.click();
+      });
+    }
+
+    // Comfort size presets: Comfort (default 43dvh), Tall (68dvh), Compact (28dvh)
+    const sizePresets = [
+      { label: 'Comfort', vh: 0.43 },
+      { label: 'Tall', vh: 0.68 },
+      { label: 'Compact', vh: 0.28 }
+    ];
+    let currentSizePresetIdx = 0;
+
+    if (mfiSizeCycleBtn && mobileFloatingInspector) {
+      mfiSizeCycleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        currentSizePresetIdx = (currentSizePresetIdx + 1) % sizePresets.length;
+        const preset = sizePresets[currentSizePresetIdx];
+        const targetH = Math.round(window.innerHeight * preset.vh);
+        mobileFloatingInspector.style.height = `${targetH}px`;
+        mobileFloatingInspector.style.width = 'calc(100vw - 16px)';
+        mobileFloatingInspector.style.left = '8px';
+        mobileFloatingInspector.style.bottom = 'calc(68px + env(safe-area-inset-bottom, 8px))';
+        if (mfiSizeBadge) mfiSizeBadge.textContent = preset.label;
+      });
+    }
+
+    // Top Edge Vertical Resize (Touch & Pointer)
+    if (mfiResizeTop && mobileFloatingInspector) {
+      let startY = 0;
+      let startH = 0;
+      let dragging = false;
+
+      mfiResizeTop.addEventListener('pointerdown', (e) => {
+        dragging = true;
+        startY = e.clientY;
+        startH = mobileFloatingInspector.getBoundingClientRect().height;
+        mobileFloatingInspector.classList.add('is-resizing');
+        try { mfiResizeTop.setPointerCapture(e.pointerId); } catch (_) {}
+        e.preventDefault();
+      });
+
+      mfiResizeTop.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const dy = startY - e.clientY;
+        const minH = 175;
+        const maxH = Math.max(260, window.innerHeight - 124);
+        const newH = Math.min(maxH, Math.max(minH, Math.round(startH + dy)));
+        mobileFloatingInspector.style.height = `${newH}px`;
+        if (mfiSizeBadge) {
+          mfiSizeBadge.textContent = `${Math.round((newH / window.innerHeight) * 100)}%`;
+        }
+      });
+
+      const endTopResize = (e) => {
+        if (!dragging) return;
+        dragging = false;
+        mobileFloatingInspector.classList.remove('is-resizing');
+        try { mfiResizeTop.releasePointerCapture(e.pointerId); } catch (_) {}
+      };
+      mfiResizeTop.addEventListener('pointerup', endTopResize);
+      mfiResizeTop.addEventListener('pointercancel', endTopResize);
+    }
+
+    // Corner Width & Height Resize
+    if (mfiResizeCorner && mobileFloatingInspector) {
+      let startX = 0;
+      let startY = 0;
+      let startW = 0;
+      let startH = 0;
+      let startBottom = 0;
+      let draggingCorner = false;
+
+      mfiResizeCorner.addEventListener('pointerdown', (e) => {
+        draggingCorner = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = mobileFloatingInspector.getBoundingClientRect();
+        startW = rect.width;
+        startH = rect.height;
+        startBottom = window.innerHeight - rect.bottom;
+        mobileFloatingInspector.classList.add('is-resizing');
+        try { mfiResizeCorner.setPointerCapture(e.pointerId); } catch (_) {}
+        e.preventDefault();
+      });
+
+      mfiResizeCorner.addEventListener('pointermove', (e) => {
+        if (!draggingCorner) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        const rect = mobileFloatingInspector.getBoundingClientRect();
+        const maxW = Math.max(260, window.innerWidth - rect.left - 6);
+        const newW = Math.min(maxW, Math.max(260, Math.round(startW + dx)));
+        const newH = Math.min(window.innerHeight - 124, Math.max(175, Math.round(startH + dy)));
+        const newBottom = Math.max(64, Math.round(startBottom - dy));
+        mobileFloatingInspector.style.width = `${newW}px`;
+        mobileFloatingInspector.style.height = `${newH}px`;
+        mobileFloatingInspector.style.bottom = `${newBottom}px`;
+        if (mfiSizeBadge) {
+          mfiSizeBadge.textContent = `${Math.round(newW)}×${Math.round(newH)}`;
+        }
+      });
+
+      const endCornerResize = (e) => {
+        if (!draggingCorner) return;
+        draggingCorner = false;
+        mobileFloatingInspector.classList.remove('is-resizing');
+        try { mfiResizeCorner.releasePointerCapture(e.pointerId); } catch (_) {}
+      };
+      mfiResizeCorner.addEventListener('pointerup', endCornerResize);
+      mfiResizeCorner.addEventListener('pointercancel', endCornerResize);
+    }
+
+    // Header Drag to Reposition Floating Inspector
+    if (mfiHeader && mobileFloatingInspector) {
+      let startX = 0;
+      let startY = 0;
+      let startLeft = 0;
+      let startBottom = 0;
+      let draggingHeader = false;
+
+      mfiHeader.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('button')) return;
+        draggingHeader = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = mobileFloatingInspector.getBoundingClientRect();
+        startLeft = rect.left;
+        startBottom = window.innerHeight - rect.bottom;
+        mobileFloatingInspector.classList.add('is-resizing');
+        try { mfiHeader.setPointerCapture(e.pointerId); } catch (_) {}
+        e.preventDefault();
+      });
+
+      mfiHeader.addEventListener('pointermove', (e) => {
+        if (!draggingHeader) return;
+        const dx = e.clientX - startX;
+        const dy = startY - e.clientY;
+        const rect = mobileFloatingInspector.getBoundingClientRect();
+        const maxLeft = Math.max(6, window.innerWidth - rect.width - 6);
+        const maxBottom = Math.max(68, window.innerHeight - rect.height - 56);
+        const newLeft = Math.min(maxLeft, Math.max(6, Math.round(startLeft + dx)));
+        const newBottom = Math.min(maxBottom, Math.max(68, Math.round(startBottom + dy)));
+        mobileFloatingInspector.style.left = `${newLeft}px`;
+        mobileFloatingInspector.style.bottom = `${newBottom}px`;
+      });
+
+      const endHeaderDrag = (e) => {
+        if (!draggingHeader) return;
+        draggingHeader = false;
+        mobileFloatingInspector.classList.remove('is-resizing');
+        try { mfiHeader.releasePointerCapture(e.pointerId); } catch (_) {}
+      };
+      mfiHeader.addEventListener('pointerup', endHeaderDrag);
+      mfiHeader.addEventListener('pointercancel', endHeaderDrag);
+    }
 
     tabButtons.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -6844,15 +7061,19 @@
           }
         }
 
-        // Sync desktop active workspace state so switching back to landscape/desktop preserves context
+        // Sync desktop active workspace state & floating inspector visibility
         if (targetId === 'mobileTabConverter') {
           activeMainWorkspace = 'converter';
+          if (mobileFloatingInspector) mobileFloatingInspector.classList.add('hidden-for-tab');
+          if (mobileInspectorToggleBtn) mobileInspectorToggleBtn.classList.remove('active');
           if (navTabConverter) navTabConverter.classList.add('active');
           if (navTabStudio) navTabStudio.classList.remove('active');
           if (navTabHollowBox) navTabHollowBox.classList.remove('active');
           ensureConverterSampleLoaded();
         } else if (targetId === 'mobileTabHollowBox') {
           activeMainWorkspace = 'hollowbox';
+          if (mobileFloatingInspector) mobileFloatingInspector.classList.add('hidden-for-tab');
+          if (mobileInspectorToggleBtn) mobileInspectorToggleBtn.classList.remove('active');
           if (navTabHollowBox) navTabHollowBox.classList.add('active');
           if (navTabStudio) navTabStudio.classList.remove('active');
           if (navTabConverter) navTabConverter.classList.remove('active');
@@ -6862,12 +7083,16 @@
           });
         } else {
           activeMainWorkspace = 'studio';
+          if (mobileFloatingInspector) {
+            mobileFloatingInspector.classList.remove('hidden-for-tab');
+            if (mobileInspectorToggleBtn) {
+              mobileInspectorToggleBtn.classList.toggle('active', !mobileFloatingInspector.classList.contains('minimized'));
+            }
+          }
           if (navTabStudio) navTabStudio.classList.add('active');
           if (navTabConverter) navTabConverter.classList.remove('active');
           if (navTabHollowBox) navTabHollowBox.classList.remove('active');
-          if (targetId === 'mobileTabPreview') {
-            requestAnimationFrame(() => renderPreview());
-          }
+          requestAnimationFrame(() => renderPreview());
         }
 
         window.scrollTo({ top: 0, behavior: 'instant' });

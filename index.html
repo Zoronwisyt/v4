@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=4.1">
+  <link rel="stylesheet" href="styles.css?v=4.9">
 </head>
 <body class="locked">
 
@@ -1647,47 +1647,68 @@
       </div>
     </div>
 
-    <div class="mobile-tab-content active" id="mobileTabConfig">
-      <div class="mobile-tab-inner" id="mobileConfigSlot"></div>
-    </div>
-
-    <div class="mobile-tab-content" id="mobileTabPreview">
+    <!-- Tab 1: Main Wipe Studio (Preview in middle + Download XML in standard spot) -->
+    <div class="mobile-tab-content active" id="mobileTabPreview">
       <div class="mobile-tab-inner" id="mobilePreviewSlot"></div>
+      <div class="mobile-tab-inner mobile-data-slot" id="mobileDataSlot"></div>
     </div>
 
-    <div class="mobile-tab-content" id="mobileTabData">
-      <div class="mobile-tab-inner" id="mobileDataSlot"></div>
-    </div>
-
+    <!-- Tab 2: Separate Media Converter Tab -->
     <div class="mobile-tab-content" id="mobileTabConverter">
       <div class="mobile-tab-inner" id="mobileConverterSlot"></div>
     </div>
 
-    <div class="mobile-tab-content" id="mobileTabHollowBox">
+    <div class="mobile-tab-content" id="mobileTabHollowBox" style="display: none;">
       <div class="mobile-tab-inner" id="mobileHollowBoxSlot"></div>
     </div>
 
+    <!-- Floating Resizable Inspector (Friendly Default Size Immediately) -->
+    <div class="mobile-floating-inspector" id="mobileFloatingInspector" role="region" aria-label="Floating Inspector">
+      <div class="mfi-resize-top" id="mfiResizeTop" title="Drag up or down to resize Inspector">
+        <span class="mfi-grab-pill"></span>
+      </div>
+      <div class="mfi-header" id="mfiHeader">
+        <div class="mfi-title-group">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
+            <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
+            <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
+          </svg>
+          <span>Inspector</span>
+          <span class="mfi-size-badge" id="mfiSizeBadge">Comfort</span>
+        </div>
+        <div class="mfi-actions">
+          <button class="mfi-btn" id="mfiSizeCycleBtn" type="button" title="Cycle Inspector size (Comfort / Tall / Compact)">
+            <span>Size</span>
+          </button>
+          <button class="mfi-btn" id="mfiFoldAllBtn" type="button" title="Collapse or expand all sections">
+            <span>Fold</span>
+          </button>
+          <button class="mfi-btn icon-only" id="mfiMinimizeBtn" type="button" title="Minimize floating Inspector" aria-label="Minimize Inspector">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="mfi-body" id="mobileConfigSlot"></div>
+      <div class="mfi-resize-corner" id="mfiResizeCorner" title="Drag corner to resize width and height" aria-hidden="true"></div>
+    </div>
+
     <nav class="mobile-tab-bar" id="mobileTabBar" aria-label="Mobile workspace navigation">
-      <button class="mobile-tab active" data-tab="mobileTabConfig" type="button">
+      <button class="mobile-tab active" data-tab="mobileTabPreview" type="button">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+        <span>Wipe Studio</span>
+      </button>
+      <button class="mobile-inspector-pill active" id="mobileInspectorToggleBtn" type="button" aria-expanded="true">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
           <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
           <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
           <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
         </svg>
-        <span>Setup</span>
-      </button>
-      <button class="mobile-tab" data-tab="mobileTabPreview" type="button">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-        </svg>
-        <span>Monitor</span>
-      </button>
-      <button class="mobile-tab" data-tab="mobileTabData" type="button">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
-        </svg>
-        <span>Export</span>
+        <span>Inspector</span>
       </button>
       <button class="mobile-tab" data-tab="mobileTabConverter" type="button">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1695,12 +1716,12 @@
           <circle cx="8.5" cy="8.5" r="1.5"/>
           <polyline points="21 15 16 10 5 21"/>
         </svg>
-        <span>Convert</span>
+        <span>Media Converter</span>
       </button>
     </nav>
   </div>
 
-  <script src="app.js?v=4.8"></script>
-  <script src="fx.js?v=4.8"></script>
+  <script src="app.js?v=4.9"></script>
+  <script src="fx.js?v=4.9"></script>
 </body>
 </html>
