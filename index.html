@@ -165,6 +165,14 @@
           </svg>
           <span>Media Converter</span>
         </button>
+        <button class="nav-tab" data-tab="realpreview" id="navTabRealPreview" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+            <polyline points="2 17 12 22 22 17"/>
+            <polyline points="2 12 12 17 22 12"/>
+          </svg>
+          <span>Real Preview</span>
+        </button>
       </nav>
 
       <!-- Live Spec Readout -->
@@ -519,7 +527,6 @@
               <div class="toggle-group anim-grid" id="animTypeToggle">
                 <button class="toggle-btn" data-value="none" type="button">None</button>
                 <button class="toggle-btn active" data-value="flip" type="button">Flip</button>
-                <button class="toggle-btn" data-value="cube" type="button">Cube</button>
                 <button class="toggle-btn" data-value="box" type="button">Box</button>
                 <button class="toggle-btn" data-value="boxv2" type="button">Box V2</button>
               </div>
@@ -1011,16 +1018,31 @@
 
     <!-- Center Column: Canvas Monitor & Transport -->
     <section class="panel preview-panel" id="preview-panel">
-      <div class="panel-header">
+      <div class="panel-header preview-panel-header">
         <h2>
           <span class="ph-icon">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
             </svg>
           </span>
-          <span class="ph-text">Canvas Monitor<small>Orthographic slice preview</small></span>
+          <span class="ph-text" id="studioMonitorTitle">Canvas Monitor<small id="studioMonitorSubtitle">Orthographic slice preview</small></span>
         </h2>
-        <div class="preview-dimensions" id="previewDimensions">1080 × 1350</div>
+        <div class="studio-preview-header-right">
+          <!-- Switch between 2D Canvas and GLSL Preview -->
+          <div class="toggle-group studio-preview-switcher" id="studioPreviewSwitcher">
+            <button class="toggle-btn active" data-preview-mode="canvas" id="btnPreviewMode2D" type="button" title="Standard 2D Canvas Monitor">2D Canvas</button>
+            <button class="toggle-btn" data-preview-mode="glsl" id="btnPreviewModeGLSL" type="button" title="Native WebGL GLSL 3D Shader Preview">GLSL 3D</button>
+          </div>
+
+          <!-- Quick GLSL Tools (Visible only when GLSL 3D is active in Wipe Studio) -->
+          <div class="toggle-group studio-glsl-tools" id="studioGlslQuickTools" style="display: none;">
+            <button class="toggle-btn active" data-cam="front" id="studioGlslCamFrontBtn" type="button" title="Direct Front View (Exact Alight Motion output)">Front</button>
+            <button class="toggle-btn" data-cam="orbit" id="studioGlslCamOrbitBtn" type="button" title="3D Perspective Orbit (Inspect Z-Depth &amp; 3D Folds)">Orbit</button>
+            <button class="toggle-btn active" id="studioGlslRandColorsBtn" type="button" title="Toggle Random Colors for Slices">Colors</button>
+          </div>
+
+          <div class="preview-dimensions" id="previewDimensions">1080 × 1350</div>
+        </div>
       </div>
 
       <!-- Canvas Stage -->
@@ -1385,7 +1407,126 @@
       </div>
     </section>
 
-    <!-- Workspace 3: Hollow Box Maker -->
+    <!-- Workspace: Real Preview (Native GLSL / WebGL 3D Engine) -->
+    <section class="panel realpreview-panel" id="realpreview-panel" style="display: none; grid-column: 1 / -1;">
+      <div class="panel-header">
+        <h2>
+          <span class="ph-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+              <polyline points="2 17 12 22 22 17"/>
+              <polyline points="2 12 12 17 22 12"/>
+            </svg>
+          </span>
+          <span class="ph-text">Real Preview<small>Native WebGL GLSL Shader Engine · True 3D Flip Layer Motion</small></span>
+        </h2>
+        <div class="realpreview-header-actions">
+          <div class="pill-group" id="rpCameraModeGroup">
+            <button class="ph-btn active" data-cam="front" id="rpCamFrontBtn" type="button" title="Direct Front View (Exact Alight Motion output)">Front View</button>
+            <button class="ph-btn" data-cam="orbit" id="rpCamOrbitBtn" type="button" title="3D Perspective Orbit (Inspect Z-Depth &amp; 3D Folds)">3D Orbit</button>
+          </div>
+          <div class="rp-color-ctrls-group">
+            <label class="rp-color-label" title="Change Background Color of Preview Stage">
+              <span>BG</span>
+              <input type="color" id="rpBgColorPicker" value="#0a0a0e">
+            </label>
+            <label class="rp-color-label" title="Change Base Layer Color (when Random Colors is OFF)">
+              <span>Layer</span>
+              <input type="color" id="rpLayerColorPicker" value="#e05a3a">
+            </label>
+            <button class="ph-btn active" id="rpToggleRandomColorsBtn" type="button" title="Optional: Randomize colors for each flip layer slice so they are clearly distinguishable">Random Colors: ON</button>
+            <button class="ph-btn icon-only" id="rpShuffleColorsBtn" type="button" title="Shuffle Slice Palette">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/>
+              </svg>
+            </button>
+          </div>
+          <button class="ph-btn" id="rpToggleLightingBtn" type="button" title="Toggle 3D lighting &amp; backface shading">Lighting: ON</button>
+          <button class="ph-btn" id="rpToggleShaderCodeBtn" type="button" title="Toggle Live GLSL Shader Code &amp; Uniforms">View GLSL Code</button>
+        </div>
+      </div>
+
+      <div class="realpreview-layout" id="realpreviewLayout">
+        <!-- Main GLSL Canvas Stage -->
+        <div class="realpreview-stage-card" id="realpreviewStageCard">
+          <div class="glsl-stage-wrap" id="glslStageWrap">
+            <canvas id="glslRealCanvas"></canvas>
+            <!-- Real-time 3D Telemetry HUD Overlay -->
+            <div class="glsl-hud-overlay">
+              <div class="glsl-hud-row">
+                <span class="glsl-badge">WebGL GLSL</span>
+                <span class="glsl-hud-metric" id="rpHudFps">60 FPS</span>
+                <span class="glsl-hud-metric" id="rpHudLayers">5 Slices</span>
+              </div>
+              <div class="glsl-hud-row bottom">
+                <span class="glsl-hud-param" id="rpHudAxis">Axis: 45.0°</span>
+                <span class="glsl-hud-param" id="rpHudAngle">Angle: 0.0°</span>
+                <span class="glsl-hud-param" id="rpHudWipe">Wipe: 0% → 100%</span>
+              </div>
+            </div>
+            <!-- Orbit Drag Helper Hint -->
+            <div class="orbit-hint" id="rpOrbitHint" style="display: none;">
+              <span>Drag canvas to Orbit 3D Camera · Scroll to Zoom</span>
+            </div>
+          </div>
+
+          <!-- Playback Transport -->
+          <div class="realpreview-transport">
+            <button class="rp-btn" id="rpPlayBtn" type="button" title="Play or pause (Space)">
+              <svg id="rpPlayIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+            </button>
+            <button class="rp-btn icon-only" id="rpStepBackBtn" type="button" title="Step back 1 frame">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="19 20 9 12 19 4"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+            </button>
+            <button class="rp-btn icon-only" id="rpStepFwdBtn" type="button" title="Step forward 1 frame">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 4 15 12 5 20"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+            </button>
+            <div class="scrubber-wrap">
+              <input type="range" id="rpScrubber" min="0" max="1" step="0.001" value="0" aria-label="Timeline scrubber">
+            </div>
+            <span class="rp-time" id="rpTimeDisplay">0.00s</span>
+            <div class="pill-group rp-speed-group">
+              <button class="rp-pill active" data-speed="1.0" type="button">1x</button>
+              <button class="rp-pill" data-speed="0.5" type="button">0.5x</button>
+              <button class="rp-pill" data-speed="0.25" type="button">0.25x</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live GLSL Shader Code & Uniforms Drawer -->
+        <div class="realpreview-inspector-card" id="rpInspectorCard">
+          <div class="rp-drawer-tabs">
+            <button class="rp-dtab active" data-view="vert" id="rpTabVertBtn" type="button">Vertex Shader (3D Flip)</button>
+            <button class="rp-dtab" data-view="frag" id="rpTabFragBtn" type="button">Fragment Shader (Wipe2)</button>
+            <button class="rp-dtab" data-view="uniforms" id="rpTabUniformsBtn" type="button">Live Uniforms</button>
+          </div>
+
+          <div class="rp-drawer-view" id="rpViewVert">
+            <div class="code-banner">Active Rodrigues 3D Axis Rotation Matrix (Vertex Shader)</div>
+            <pre class="glsl-code-block"><code id="rpVertCode"></code></pre>
+          </div>
+
+          <div class="rp-drawer-view" id="rpViewFrag" style="display: none;">
+            <div class="code-banner">Active Isotropic Wipe2 Diagonal Cutout &amp; Feathering (Fragment Shader)</div>
+            <pre class="glsl-code-block"><code id="rpFragCode"></code></pre>
+          </div>
+
+          <div class="rp-drawer-view" id="rpViewUniforms" style="display: none;">
+            <div class="code-banner">Real-Time GPU Uniform Registry (Updating live)</div>
+            <div class="uniforms-table-wrap">
+              <table class="uniforms-table">
+                <thead>
+                  <tr><th>Uniform</th><th>Type</th><th>Current Value</th></tr>
+                </thead>
+                <tbody id="rpUniformsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
     <section class="panel hollowbox-panel" id="hollowboxPanel" style="display: none; grid-column: 1 / -1;">
       <div class="hollowbox-layout">
 
@@ -1665,6 +1806,11 @@
       <div class="mobile-tab-inner" id="mobileConverterSlot"></div>
     </div>
 
+    <!-- Tab 3: Real Preview (Native GLSL / WebGL 3D Engine) -->
+    <div class="mobile-tab-content" id="mobileTabRealPreview">
+      <div class="mobile-tab-inner" id="mobileRealPreviewSlot"></div>
+    </div>
+
     <div class="mobile-tab-content" id="mobileTabHollowBox" style="display: none;">
       <div class="mobile-tab-inner" id="mobileHollowBoxSlot"></div>
     </div>
@@ -1724,6 +1870,14 @@
           <polyline points="21 15 16 10 5 21"/>
         </svg>
         <span>Media Converter</span>
+      </button>
+      <button class="mobile-tab" data-tab="mobileTabRealPreview" type="button">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+          <polyline points="2 17 12 22 22 17"/>
+          <polyline points="2 12 12 17 22 12"/>
+        </svg>
+        <span>Real Preview</span>
       </button>
     </nav>
   </div>

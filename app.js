@@ -24,6 +24,7 @@
     solidHeight: 1350,
     splitDirection: 'horizontal',
     wipeMethod: 'mask', // 'wipe' or 'mask' (Masking Mode enabled)
+    studioPreviewMode: 'canvas', // 'canvas' (2D Canvas Monitor) or 'glsl' (Native WebGL 3D Real Preview)
     autoFixPivot: false, // Recommended for tighter diagonal slice alignment; users can enable it per project
     maskEmbedScene: true, // Group in <embedScene> matching Project Name 294
     videoLayer: false,
@@ -408,6 +409,170 @@
     return `hsl(${newH}, ${s}%, ${newL}%)`;
   }
 
+  function colorToRgbFloat(str, alpha = 1.0) {
+    if (!str) return [0.88, 0.35, 0.23, alpha];
+    str = String(str).trim();
+    if (str.startsWith('#')) {
+      let c = str.slice(1);
+      if (c.length === 3) c = c.split('').map(x => x + x).join('');
+      const num = parseInt(c, 16);
+      return [((num >> 16) & 255) / 255, ((num >> 8) & 255) / 255, (num & 255) / 255, alpha];
+    }
+    const hslMatch = str.match(/hsl\s*\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)/i);
+    if (hslMatch) {
+      let h = parseFloat(hslMatch[1]) / 360;
+      let s = parseFloat(hslMatch[2]) / 100;
+      let l = parseFloat(hslMatch[3]) / 100;
+      function hue2rgb(p, q, t) {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      }
+      let r, g, b;
+      if (s === 0) {
+        r = g = b = l;
+      } else {
+        let q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        let p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+      }
+      return [r, g, b, alpha];
+    }
+    return [0.88, 0.35, 0.23, alpha];
+  }
+
+  function adjustBrightness(colorStr, factor) {
+    const rgb = colorToRgbFloat(colorStr);
+    const r = Math.min(255, Math.max(0, Math.round(rgb[0] * 255 * factor)));
+    const g = Math.min(255, Math.max(0, Math.round(rgb[1] * 255 * factor)));
+    const b = Math.min(255, Math.max(0, Math.round(rgb[2] * 255 * factor)));
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  function draw3DBoxSlice(targetCtx, cx, cy, w, h, d, rxDeg, ryDeg, rzDeg, baseColor, label, sFactor) {
+    const halfW = w / 2;
+    const halfH = h / 2;
+    const halfD = d / 2;
+
+    const corners = [
+      [-halfW, -halfH, -halfD], // 0: back top left
+      [ halfW, -halfH, -halfD], // 1: back top right
+      [ halfW,  halfH, -halfD], // 2: back btm right
+      [-halfW,  halfH, -halfD], // 3: back btm left
+      [-halfW, -halfH,  halfD], // 4: front top left
+      [ halfW, -halfH,  halfD], // 5: front top right
+      [ halfW,  halfH,  halfD], // 6: front btm right
+      [-halfW,  halfH,  halfD], // 7: front btm left
+    ];
+
+    const radX = (rxDeg || 0) * (Math.PI / 180);
+    const radY = (ryDeg || 0) * (Math.PI / 180);
+    const radZ = (rzDeg || 0) * (Math.PI / 180);
+
+    const sx = Math.sin(radX), cxRot = Math.cos(radX);
+    const sy = Math.sin(radY), cyRot = Math.cos(radY);
+    const sz = Math.sin(radZ), czRot = Math.cos(radZ);
+
+    const m00 = czRot * cyRot;
+    const m01 = czRot * sy * sx - sz * cxRot;
+    const m02 = czRot * sy * cxRot + sz * sx;
+
+    const m10 = sz * cyRot;
+    const m11 = sz * sy * sx + czRot * cxRot;
+    const m12 = sz * sy * cxRot - czRot * sx;
+
+    const m20 = -sy;
+    const m21 = cyRot * sx;
+    const m22 = cyRot * cxRot;
+
+    const camDist = 1200 * (sFactor || 1);
+
+    const proj = corners.map(c => {
+      const x3 = m00 * c[0] + m01 * c[1] + m02 * c[2];
+      const y3 = m10 * c[0] + m11 * c[1] + m12 * c[2];
+      const z3 = m20 * c[0] + m21 * c[1] + m22 * c[2];
+      const factor = camDist / Math.max(10, camDist + z3);
+      return {
+        x: cx + x3 * factor,
+        y: cy + y3 * factor,
+        z: z3
+      };
+    });
+
+    const faces = [
+      { indices: [4, 5, 6, 7], normal: [0, 0, 1], name: 'front' },
+      { indices: [1, 0, 3, 2], normal: [0, 0, -1], name: 'back' },
+      { indices: [5, 1, 2, 6], normal: [1, 0, 0], name: 'right' },
+      { indices: [0, 4, 7, 3], normal: [-1, 0, 0], name: 'left' },
+      { indices: [0, 1, 5, 4], normal: [0, -1, 0], name: 'top' },
+      { indices: [7, 6, 2, 3], normal: [0, 1, 0], name: 'bottom' }
+    ];
+
+    const renderList = [];
+    faces.forEach(face => {
+      const p0 = proj[face.indices[0]];
+      const p1 = proj[face.indices[1]];
+      const p2 = proj[face.indices[2]];
+      const p3 = proj[face.indices[3]];
+
+      const cross = (p1.x - p0.x) * (p2.y - p1.y) - (p1.y - p0.y) * (p2.x - p1.x);
+      if (cross > 0) {
+        const avgZ = (p0.z + p1.z + p2.z + p3.z) / 4;
+        const nx = m00 * face.normal[0] + m01 * face.normal[1] + m02 * face.normal[2];
+        const ny = m10 * face.normal[0] + m11 * face.normal[1] + m12 * face.normal[2];
+        const nz = m20 * face.normal[0] + m21 * face.normal[1] + m22 * face.normal[2];
+
+        // Key light vector
+        const lx = 0.35, ly = -0.55, lz = -0.75;
+        const lLen = Math.hypot(lx, ly, lz);
+        const dotL = -(nx * (lx / lLen) + ny * (ly / lLen) + nz * (lz / lLen));
+        const lightFactor = Math.max(0.40, Math.min(1.25, 0.70 + dotL * 0.45));
+
+        renderList.push({
+          face,
+          pts: [p0, p1, p2, p3],
+          avgZ,
+          lightFactor
+        });
+      }
+    });
+
+    renderList.sort((a, b) => b.avgZ - a.avgZ);
+
+    renderList.forEach(item => {
+      targetCtx.save();
+      targetCtx.beginPath();
+      targetCtx.moveTo(item.pts[0].x, item.pts[0].y);
+      targetCtx.lineTo(item.pts[1].x, item.pts[1].y);
+      targetCtx.lineTo(item.pts[2].x, item.pts[2].y);
+      targetCtx.lineTo(item.pts[3].x, item.pts[3].y);
+      targetCtx.closePath();
+
+      targetCtx.fillStyle = adjustBrightness(baseColor, item.lightFactor);
+      targetCtx.fill();
+
+      targetCtx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
+      targetCtx.lineWidth = 1;
+      targetCtx.stroke();
+
+      if (item.face.name === 'front' && label) {
+        const midX = (item.pts[0].x + item.pts[1].x + item.pts[2].x + item.pts[3].x) / 4;
+        const midY = (item.pts[0].y + item.pts[1].y + item.pts[2].y + item.pts[3].y) / 4;
+        targetCtx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        targetCtx.font = `600 ${Math.max(9, Math.round(11 * (sFactor || 1) * 3))}px "IBM Plex Mono", monospace`;
+        targetCtx.textAlign = 'center';
+        targetCtx.textBaseline = 'middle';
+        targetCtx.fillText(label, midX, midY);
+      }
+      targetCtx.restore();
+    });
+  }
+
   function bezierY(t, x1, y1, x2, y2) {
     if (t <= 0) return 0;
     if (t >= 1) return 1;
@@ -687,15 +852,45 @@
             const layerLocX = solidOriginX + (layerXStart * state.solidWidth) + (tileWidth / 2);
             const layerLocY = solidOriginY + (layerYStart * state.solidHeight) + (tileHeight / 2);
 
+            let effectiveWipeAngle = 0;
+            if (subDir === 'diagonal') {
+              effectiveWipeAngle = (state.wipeAngle !== undefined && state.wipeAngle !== 0 && state.wipeAngle !== 90 && state.wipeAngle !== 135)
+                ? state.wipeAngle
+                : 45;
+            } else if (subDir === 'diagonal-desc') {
+              effectiveWipeAngle = (state.wipeAngle !== undefined && state.wipeAngle !== 0 && state.wipeAngle !== 90 && state.wipeAngle !== 45)
+                ? state.wipeAngle
+                : 135;
+            } else if (subDir === 'horizontal') {
+              effectiveWipeAngle = 90;
+            } else if (subDir === 'vertical') {
+              effectiveWipeAngle = 0;
+            } else {
+              effectiveWipeAngle = (state.wipeAngle !== undefined) ? state.wipeAngle : 0;
+            }
+
+            let sliceWipeStart = normStart;
+            let sliceWipeEnd = normEnd;
+            if (subDir === 'diagonal' && Math.abs(effectiveWipeAngle - 45) < 0.000001) {
+              if (normStart <= 0.000001) sliceWipeStart = -0.5;
+              if (normEnd >= 0.999999) sliceWipeEnd = 1.5;
+            } else if (subDir === 'diagonal-desc' && Math.abs(effectiveWipeAngle - 135) < 0.000001) {
+              if (normStart <= 0.000001) sliceWipeStart = -0.5;
+              if (normEnd >= 0.999999) sliceWipeEnd = 1.5;
+            }
+
             Object.assign(layerProps, {
               locX: layerLocX,
               locY: layerLocY,
               width: layerWidth,
               height: layerHeight,
-              wipeXStart: 0,
-              wipeXEnd: 1,
-              wipeYStart: 0,
-              wipeYEnd: 1,
+              wipeAngle: effectiveWipeAngle,
+              wipeStart: sliceWipeStart,
+              wipeEnd: sliceWipeEnd,
+              wipeXStart: layerXStart,
+              wipeXEnd: layerXEnd,
+              wipeYStart: layerYStart,
+              wipeYEnd: layerYEnd,
             });
           } else { // 'wipe' or 'boxv2' method
             // Determine effective wipe angle
@@ -924,6 +1119,11 @@
 
   // ---- Canvas Rendering ----
   function renderPreview(timeSec = state.currentTimeSec) {
+    if (state.studioPreviewMode === 'glsl') {
+      if (typeof syncStudioGlslSize === 'function') syncStudioGlslSize();
+      if (typeof renderRealGLSLFrame === 'function') renderRealGLSLFrame(timeSec);
+      return;
+    }
     if (!canvas || !ctx) return;
     const container = $('#canvasContainer');
     const isCompact = window.innerWidth <= 860;
@@ -1032,34 +1232,94 @@
         }
       }
 
-      // --- 3D FLIP/CUBE/BOX V2 EMULATION ---
-      if (state.animType === 'flip' || state.animType === 'cube' || state.animType === 'box' || state.animType === 'hollowbox' || isBoxV2Active) {
-        // The Cube & Box V2 effects always rotate around the layer's center,
-        // so ignore the flip pivot for the cube/boxv2 preview.
-        const normPivotX = (state.animType === 'cube' || state.animType === 'hollowbox' || isBoxV2Active) ? 0.5 : (layer.pivotX / 200) + 0.5;
-        const normPivotY = (state.animType === 'cube' || state.animType === 'hollowbox' || isBoxV2Active) ? 0.5 : (layer.pivotY / 200) + 0.5;
+      // --- 3D VOLUMETRIC BOX / BOX V2 SLICE RENDERING ---
+      const isBox3D = (isBoxV2Active || state.animType === 'box');
+      if (isBox3D) {
+        let boxRotX = 0, boxRotY = 0, boxRotZ = 0;
+        if (isBoxV2Active) {
+          boxRotX = boxv2RotX;
+          boxRotY = boxv2RotY;
+          boxRotZ = boxv2RotZ;
+        } else {
+          let orientEased = 0;
+          const orientStartT = layer.orientStartT;
+          const orientEndT = layer.orientEndT;
+          if (timeSec > orientStartT && orientEndT > orientStartT) {
+            if (timeSec >= orientEndT) {
+              orientEased = 1;
+            } else {
+              const progress = (timeSec - orientStartT) / (orientEndT - orientStartT);
+              const [x1, y1, x2, y2] = (state.box.orientEasing || '0.25, 0.10, 0.25, 1.00').split(',').map(Number);
+              orientEased = bezierY(progress, x1, y1, x2, y2);
+            }
+          }
+
+          let rotateEased = 0;
+          const rotateStartT = layer.rotateStartT;
+          const rotateEndT = layer.rotateEndT;
+          if (timeSec > rotateStartT && rotateEndT > rotateStartT) {
+            if (timeSec >= rotateEndT) {
+              rotateEased = 1;
+            } else {
+              const progress = (timeSec - rotateStartT) / (rotateEndT - rotateStartT);
+              const [x1, y1, x2, y2] = (state.box.rotateEasing || '0.25, 0.10, 0.25, 1.00').split(',').map(Number);
+              rotateEased = bezierY(progress, x1, y1, x2, y2);
+            }
+          }
+
+          const ox = state.box.orientStartX + (state.box.orientEndX - state.box.orientStartX) * orientEased;
+          const oy = state.box.orientStartY + (state.box.orientEndY - state.box.orientStartY) * orientEased;
+          const oz = state.box.orientStartZ + (state.box.orientEndZ - state.box.orientStartZ) * orientEased;
+
+          const rx = state.box.rotateStartX + (state.box.rotateEndX - state.box.rotateStartX) * rotateEased;
+          const ry = state.box.rotateStartY + (state.box.rotateEndY - state.box.rotateStartY) * rotateEased;
+          const rz = state.box.rotateStartZ + (state.box.rotateEndZ - state.box.rotateStartZ) * rotateEased;
+
+          boxRotX = ox + rx;
+          boxRotY = oy + ry;
+          boxRotZ = oz + rz;
+        }
+
+        const solidW = state.solidWidth * scaleF;
+        const solidH = state.solidHeight * scaleF;
+        const solidLeft = (currentLocX * scaleF) - (solidW / 2);
+        const solidTop = (currentLocY * scaleF) - (solidH / 2);
+
+        let boxW, boxH, boxCx, boxCy;
+        if (state.wipeMethod === 'mask') {
+          boxW = layerW;
+          boxH = layerH;
+          boxCx = layerLeft + (layerW / 2);
+          boxCy = layerTop + (layerH / 2);
+        } else {
+          const wxStart = layer.wipeXStart !== undefined ? layer.wipeXStart : 0;
+          const wxEnd = layer.wipeXEnd !== undefined ? layer.wipeXEnd : 1;
+          const wyStart = layer.wipeYStart !== undefined ? layer.wipeYStart : 0;
+          const wyEnd = layer.wipeYEnd !== undefined ? layer.wipeYEnd : 1;
+          boxW = Math.max(2, (wxEnd - wxStart) * solidW);
+          boxH = Math.max(2, (wyEnd - wyStart) * solidH);
+          boxCx = solidLeft + ((wxStart + wxEnd) / 2) * solidW;
+          boxCy = solidTop + ((wyStart + wyEnd) / 2) * solidH;
+        }
+
+        const boxDepth = Math.max(35 * scaleF, Math.min(boxW, boxH) * 0.65);
+        const baseColor = getLayerColor(idx, layers.length, layer.sectionIdx, state.sectionCount);
+
+        draw3DBoxSlice(ctx, boxCx, boxCy, boxW, boxH, boxDepth, boxRotX, boxRotY, boxRotZ, baseColor, `C${layer.index}`, scaleF);
+        ctx.restore();
+        return;
+      }
+
+      // --- 3D FLIP / HOLLOWBOX EMULATION ---
+      if (state.animType === 'flip' || state.animType === 'cube' || state.animType === 'hollowbox') {
+        const normPivotX = (state.animType === 'cube' || state.animType === 'hollowbox') ? 0.5 : (layer.pivotX / 200) + 0.5;
+        const normPivotY = (state.animType === 'cube' || state.animType === 'hollowbox') ? 0.5 : (layer.pivotY / 200) + 0.5;
         const px = layerLeft + (normPivotX * layerW);
         const py = layerTop + (normPivotY * layerH);
         
         ctx.translate(px, py);
         
-        if (isBoxV2Active) {
-          const rx = (boxv2RotX * Math.PI) / 180;
-          const ry = (boxv2RotY * Math.PI) / 180;
-          const rz = (boxv2RotZ * Math.PI) / 180;
-          const cx = Math.cos(rx), sx = Math.sin(rx);
-          const cy = Math.cos(ry), sy = Math.sin(ry);
-          const cz = Math.cos(rz), sz = Math.sin(rz);
-          const m00 = cz * cy;
-          const m10 = sz * cy;
-          const m01 = cz * sy * sx - sz * cx;
-          const m11 = sz * sy * sx + cz * cx;
-          ctx.transform(m00, m10, m01, m11, 0, 0);
-        } else if (state.animType === 'flip') {
-          // In Alight Motion, standard shapes have a 200x200 (-100 to +100) base square geometry.
-          // The flip3 effect executes in local square coordinates before the non-uniform transform scale.
-          // Rotating around flipAxis means points on the axis stay fixed (scale 1.0)
-          // while points perpendicular to the axis rotate in/out of the plane (scale cos(flipRad)).
+        if (state.animType === 'flip') {
           const rAspect = layerH / (layerW || 1);
           ctx.scale(1, 1 / rAspect);
           const axisRad = (layer.flipAxis * Math.PI) / 180;
@@ -1069,70 +1329,17 @@
           ctx.rotate(-axisRad);
           ctx.scale(1, rAspect);
         } else if (state.animType === 'cube') {
-          // True 3D rotation projected orthographically onto the canvas:
-          //   X = tilt up/down (foreshortens vertically)
-          //   Y = turn left/right (foreshortens horizontally)
-          //   Z = spin on the 2D plane
-          // Canvas space: +x right, +y down, +z into the screen.
           const rx = (cubeRotX * Math.PI) / 180;
           const ry = (cubeRotY * Math.PI) / 180;
           const rz = (cubeRotZ * Math.PI) / 180;
           const cx = Math.cos(rx), sx = Math.sin(rx);
           const cy = Math.cos(ry), sy = Math.sin(ry);
           const cz = Math.cos(rz), sz = Math.sin(rz);
-          // M = Rz * Ry * Rx. The face lies on z = 0, so only the first two
-          // columns (images of the x and y unit vectors) matter.
-          // Column for unit X:
           const m00 = cz * cy;
           const m10 = sz * cy;
-          // Column for unit Y:
           const m01 = cz * sy * sx - sz * cx;
           const m11 = sz * sy * sx + cz * cx;
           ctx.transform(m00, m10, m01, m11, 0, 0);
-        } else if (state.animType === 'box') {
-            // Orientation progress
-            let orientEased = 0;
-            const orientStartT = layer.orientStartT;
-            const orientEndT = layer.orientEndT;
-            if (timeSec > orientStartT && orientEndT > orientStartT) {
-                if (timeSec >= orientEndT) {
-                    orientEased = 1;
-                } else {
-                    const progress = (timeSec - orientStartT) / (orientEndT - orientStartT);
-                    const [x1, y1, x2, y2] = state.box.orientEasing.split(',').map(Number);
-                    orientEased = bezierY(progress, x1, y1, x2, y2);
-                }
-            }
-
-            // Rotation progress
-            let rotateEased = 0;
-            const rotateStartT = layer.rotateStartT;
-            const rotateEndT = layer.rotateEndT;
-            if (timeSec > rotateStartT && rotateEndT > rotateStartT) {
-                if (timeSec >= rotateEndT) {
-                    rotateEased = 1;
-                } else {
-                    const progress = (timeSec - rotateStartT) / (rotateEndT - rotateStartT);
-                    const [x1, y1, x2, y2] = state.box.rotateEasing.split(',').map(Number);
-                    rotateEased = bezierY(progress, x1, y1, x2, y2);
-                }
-            }
-
-            // Interpolate angles
-            const orientRotX = state.box.orientStartX + (state.box.orientEndX - state.box.orientStartX) * orientEased;
-            const orientRotY = state.box.orientStartY + (state.box.orientEndY - state.box.orientStartY) * orientEased;
-            
-            const rotateRotX = state.box.rotateStartX + (state.box.rotateEndX - state.box.rotateStartX) * rotateEased;
-            const rotateRotY = state.box.rotateStartY + (state.box.rotateEndY - state.box.rotateStartY) * rotateEased;
-
-            // Combine rotations for 2D preview (simplification)
-            const combinedRotX = orientRotX + rotateRotX;
-            const combinedRotY = orientRotY + rotateRotY;
-
-            // Apply transformation (similar to cube)
-            const radX = (combinedRotX * Math.PI) / 180;
-            const radY = (combinedRotY * Math.PI) / 180;
-            ctx.scale(Math.cos(radY), Math.cos(radX));
         } else if (state.animType === 'hollowbox') {
             let hbEased = 0;
             const hbStartT = layer.hbStartT !== undefined ? layer.hbStartT : 0;
@@ -1147,7 +1354,6 @@
               }
             }
 
-            // Orient + Rotate
             const orientRotX = state.hollowbox.orientStartX + (state.hollowbox.orientEndX - state.hollowbox.orientStartX) * hbEased;
             const orientRotY = state.hollowbox.orientStartY + (state.hollowbox.orientEndY - state.hollowbox.orientStartY) * hbEased;
             const rotateRotX = state.hollowbox.rotateStartX + (state.hollowbox.rotateEndX - state.hollowbox.rotateStartX) * hbEased;
@@ -1158,11 +1364,9 @@
             const radX = (combinedRotX * Math.PI) / 180;
             const radY = (combinedRotY * Math.PI) / 180;
 
-            // Width and Height tween scale factors
             const wScale = state.hollowbox.widthStart + (state.hollowbox.widthEnd - state.hollowbox.widthStart) * hbEased;
             const hScale = state.hollowbox.heightStart + (state.hollowbox.heightEnd - state.hollowbox.heightStart) * hbEased;
 
-            // Position offset
             const posX = (state.hollowbox.posStartX + (state.hollowbox.posEndX - state.hollowbox.posStartX) * hbEased) * scaleF;
             const posY = (state.hollowbox.posStartY + (state.hollowbox.posEndY - state.hollowbox.posStartY) * hbEased) * scaleF;
 
@@ -1605,47 +1809,6 @@
               </div>
             </div>
 
-            <div class="control-group anim-cube-only" style="display: ${state.animType === 'cube' ? 'block' : 'none'}">
-              <label>Cube Rotation X (Up/Down)</label>
-              <div class="solid-size-row">
-                <div class="input-group">
-                  <input type="number" class="sub-cube-x-start" value="${subSec.cubeXStart || 0}" step="1">
-                  <div class="input-suffix">S</div>
-                </div>
-                <div class="input-group">
-                  <input type="number" class="sub-cube-x-end" value="${subSec.cubeXEnd || 0}" step="1">
-                  <div class="input-suffix">E</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="control-group anim-cube-only" style="display: ${state.animType === 'cube' ? 'block' : 'none'}">
-              <label>Cube Rotation Y (Left/Right)</label>
-              <div class="solid-size-row">
-                <div class="input-group">
-                  <input type="number" class="sub-cube-y-start" value="${subSec.cubeYStart || 0}" step="1">
-                  <div class="input-suffix">S</div>
-                </div>
-                <div class="input-group">
-                  <input type="number" class="sub-cube-y-end" value="${subSec.cubeYEnd || 0}" step="1">
-                  <div class="input-suffix">E</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="control-group anim-cube-only" style="display: ${state.animType === 'cube' ? 'block' : 'none'}">
-              <label>Cube Rotation Z (Spin)</label>
-              <div class="solid-size-row">
-                <div class="input-group">
-                  <input type="number" class="sub-cube-z-start" value="${subSec.cubeZStart || 0}" step="1">
-                  <div class="input-suffix">S</div>
-                </div>
-                <div class="input-group">
-                  <input type="number" class="sub-cube-z-end" value="${subSec.cubeZEnd || 0}" step="1">
-                  <div class="input-suffix">E</div>
-                </div>
-              </div>
-            </div>
 
             <div class="control-group anim-boxv2-only" style="display: ${(state.wipeMethod === 'boxv2' || state.animType === 'boxv2') ? 'block' : 'none'}">
               <label>Box V2 Rotation X (X Axis)</label>
@@ -3554,6 +3717,7 @@
     fullUpdate();
   });
   function applyAnimTypeUI(animVal, silent = false) {
+    if (animVal === 'cube') animVal = 'box';
     state.animType = animVal;
     if (animTypeToggleGroup) {
       animTypeToggleGroup.querySelectorAll('.toggle-btn').forEach(b => {
@@ -4292,10 +4456,141 @@
   fullUpdate();
 
   // =========================================================================
-  // MAIN APP TABS: Wipe Studio vs Media Converter vs Hollow Box Maker
+  // WIPE STUDIO PREVIEW ENGINE SWITCHER (2D CANVAS vs GLSL 3D SHADER)
+  // =========================================================================
+  function syncStudioGlslSize() {
+    const glslStageWrap = document.getElementById('glslStageWrap');
+    const container = document.getElementById('canvasContainer');
+    if (!glslStageWrap || !container || !glslStageWrap.classList.contains('in-studio-stage')) return;
+
+    const isCompact = window.innerWidth <= 860;
+    const pad = isCompact ? 28 : 48;
+    const fallbackW = Math.max(Math.min(window.innerWidth - 48, 400), 200);
+    const cW = (container.clientWidth > 0) ? container.clientWidth : fallbackW;
+    const cH = (container.clientHeight > 0) ? container.clientHeight : (isCompact ? 340 : 420);
+    const maxW = Math.max(cW - pad, 160);
+    const maxH = Math.max(cH - pad, 160);
+
+    const ratio = (state.projectWidth && state.projectHeight) ? (state.projectWidth / state.projectHeight) : (4 / 5);
+    let drawW, drawH;
+    if (maxW / maxH > ratio) {
+      drawH = Math.min(maxH, 500);
+      drawW = drawH * ratio;
+    } else {
+      drawW = Math.min(maxW, 400);
+      drawH = drawW / ratio;
+    }
+
+    drawW = Math.round(drawW);
+    drawH = Math.round(drawH);
+
+    glslStageWrap.style.width = drawW + 'px';
+    glslStageWrap.style.height = drawH + 'px';
+  }
+
+  function syncStudioGlslButtons() {
+    const rpFront = document.getElementById('rpCamFrontBtn');
+    const rpOrbit = document.getElementById('rpCamOrbitBtn');
+    const rpRand = document.getElementById('rpToggleRandomColorsBtn');
+    const sFront = document.getElementById('studioGlslCamFrontBtn');
+    const sOrbit = document.getElementById('studioGlslCamOrbitBtn');
+    const sRand = document.getElementById('studioGlslRandColorsBtn');
+
+    if (sFront && rpFront) sFront.classList.toggle('active', rpFront.classList.contains('active'));
+    if (sOrbit && rpOrbit) sOrbit.classList.toggle('active', rpOrbit.classList.contains('active'));
+    if (sRand && rpRand) sRand.classList.toggle('active', rpRand.classList.contains('active'));
+  }
+
+  function setStudioPreviewMode(mode) {
+    state.studioPreviewMode = mode;
+    const isGLSL = (mode === 'glsl');
+
+    const btn2D = document.getElementById('btnPreviewMode2D');
+    const btnGLSL = document.getElementById('btnPreviewModeGLSL');
+    if (btn2D) btn2D.classList.toggle('active', !isGLSL);
+    if (btnGLSL) btnGLSL.classList.toggle('active', isGLSL);
+
+    const quickTools = document.getElementById('studioGlslQuickTools');
+    if (quickTools) quickTools.style.display = isGLSL ? 'inline-flex' : 'none';
+
+    const pCanvas = document.getElementById('previewCanvas');
+    const crosshair = document.getElementById('crosshairLabel');
+    const container = document.getElementById('canvasContainer');
+    const glslStageWrap = document.getElementById('glslStageWrap');
+    const realpreviewCard = document.getElementById('realpreviewStageCard');
+    const monitorTitle = document.getElementById('studioMonitorTitle');
+
+    if (isGLSL) {
+      if (pCanvas) pCanvas.style.display = 'none';
+      if (crosshair) crosshair.style.display = 'none';
+      if (monitorTitle) {
+        monitorTitle.innerHTML = 'Canvas Monitor <span class="badge" style="background:var(--accent); color:#000; font-weight:700;">GLSL 3D</span>';
+      }
+      if (glslStageWrap && container && glslStageWrap.parentElement !== container) {
+        container.appendChild(glslStageWrap);
+        glslStageWrap.classList.add('in-studio-stage');
+      }
+      syncStudioGlslSize();
+      if (typeof initRealPreview === 'function') initRealPreview();
+      if (typeof renderRealGLSLFrame === 'function') renderRealGLSLFrame(state.currentTimeSec);
+    } else {
+      if (glslStageWrap && realpreviewCard && glslStageWrap.parentElement !== realpreviewCard) {
+        realpreviewCard.appendChild(glslStageWrap);
+        glslStageWrap.classList.remove('in-studio-stage');
+        glslStageWrap.style.width = '';
+        glslStageWrap.style.height = '';
+      }
+      if (pCanvas) pCanvas.style.display = 'block';
+      if (crosshair) crosshair.style.display = 'block';
+      if (monitorTitle) {
+        monitorTitle.innerHTML = 'Canvas Monitor <small id="studioMonitorSubtitle">Orthographic slice preview</small>';
+      }
+      renderPreview(state.currentTimeSec);
+    }
+    syncStudioGlslButtons();
+  }
+
+  // Bind Switcher & Quick Tool Buttons
+  const btnPreview2D = document.getElementById('btnPreviewMode2D');
+  const btnPreviewGLSL = document.getElementById('btnPreviewModeGLSL');
+  if (btnPreview2D) {
+    btnPreview2D.addEventListener('click', () => setStudioPreviewMode('canvas'));
+  }
+  if (btnPreviewGLSL) {
+    btnPreviewGLSL.addEventListener('click', () => setStudioPreviewMode('glsl'));
+  }
+
+  const sFront = document.getElementById('studioGlslCamFrontBtn');
+  const sOrbit = document.getElementById('studioGlslCamOrbitBtn');
+  const sRand = document.getElementById('studioGlslRandColorsBtn');
+  if (sFront) {
+    sFront.addEventListener('click', () => {
+      const rpFront = document.getElementById('rpCamFrontBtn');
+      if (rpFront) rpFront.click();
+      syncStudioGlslButtons();
+    });
+  }
+  if (sOrbit) {
+    sOrbit.addEventListener('click', () => {
+      const rpOrbit = document.getElementById('rpCamOrbitBtn');
+      if (rpOrbit) rpOrbit.click();
+      syncStudioGlslButtons();
+    });
+  }
+  if (sRand) {
+    sRand.addEventListener('click', () => {
+      const rpRand = document.getElementById('rpToggleRandomColorsBtn');
+      if (rpRand) rpRand.click();
+      syncStudioGlslButtons();
+    });
+  }
+
+  // =========================================================================
+  // MAIN APP TABS: Wipe Studio vs Media Converter vs Real Preview vs Hollow Box Maker
   // =========================================================================
   const navTabStudio = $('#navTabStudio');
   const navTabConverter = $('#navTabConverter');
+  const navTabRealPreview = $('#navTabRealPreview');
   const navTabHollowBox = $('#navTabHollowBox');
   const headerExportBtn = $('#headerExportBtn');
   const headerExportLabel = $('#headerExportLabel');
@@ -4303,6 +4598,7 @@
   const previewPanelElem = $('#preview-panel');
   const dataPanelElem = $('#data-panel');
   const converterPanelElem = $('#converter-panel');
+  const realpreviewPanelElem = $('#realpreview-panel');
   const hollowboxPanelElem = $('#hollowboxPanel');
   let activeMainWorkspace = 'studio';
 
@@ -4316,11 +4612,13 @@
     if (tabName === 'converter') {
       if (navTabConverter) navTabConverter.classList.add('active');
       if (navTabStudio) navTabStudio.classList.remove('active');
+      if (navTabRealPreview) navTabRealPreview.classList.remove('active');
       if (navTabHollowBox) navTabHollowBox.classList.remove('active');
       if (headerExportLabel) headerExportLabel.textContent = 'Export Media XML';
       if (controlsPanelElem) controlsPanelElem.style.display = 'none';
       if (previewPanelElem) previewPanelElem.style.display = 'none';
       if (dataPanelElem) dataPanelElem.style.display = 'none';
+      if (realpreviewPanelElem) realpreviewPanelElem.style.display = 'none';
       if (hollowboxPanelElem) hollowboxPanelElem.style.display = 'none';
       if (converterPanelElem) {
         converterPanelElem.style.display = isMobile ? 'block' : 'flex';
@@ -4341,15 +4639,57 @@
         mobileTabConv.classList.add('active');
       }
       ensureConverterSampleLoaded();
+    } else if (tabName === 'realpreview') {
+      if (navTabRealPreview) navTabRealPreview.classList.add('active');
+      if (navTabStudio) navTabStudio.classList.remove('active');
+      if (navTabConverter) navTabConverter.classList.remove('active');
+      if (navTabHollowBox) navTabHollowBox.classList.remove('active');
+      if (headerExportLabel) headerExportLabel.textContent = 'Export XML';
+      if (controlsPanelElem) controlsPanelElem.style.display = 'none';
+      if (previewPanelElem) previewPanelElem.style.display = 'none';
+      if (dataPanelElem) dataPanelElem.style.display = 'none';
+      if (converterPanelElem) converterPanelElem.style.display = 'none';
+      if (hollowboxPanelElem) hollowboxPanelElem.style.display = 'none';
+      if (realpreviewPanelElem) {
+        realpreviewPanelElem.style.display = isMobile ? 'block' : 'flex';
+        realpreviewPanelElem.style.opacity = '1';
+        realpreviewPanelElem.style.visibility = 'visible';
+        realpreviewPanelElem.style.pointerEvents = 'auto';
+      }
+      const mobileTabRp = document.getElementById('mobileTabRealPreview');
+      const mobileRpBtn = document.querySelector('.mobile-tab[data-tab="mobileTabRealPreview"]');
+      const mobileFloatingInsp = document.getElementById('mobileFloatingInspector');
+      const mobileInspToggleBtn = document.getElementById('mobileInspectorToggleBtn');
+      if (mobileFloatingInsp) mobileFloatingInsp.classList.add('hidden-for-tab');
+      if (mobileInspToggleBtn) mobileInspToggleBtn.classList.remove('active');
+      if (mobileRpBtn && mobileTabRp) {
+        document.querySelectorAll('.mobile-tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.mobile-tab-content').forEach(tc => tc.classList.remove('active'));
+        mobileRpBtn.classList.add('active');
+        mobileTabRp.classList.add('active');
+      }
+      const glslStageWrap = document.getElementById('glslStageWrap');
+      const realpreviewStageCard = document.getElementById('realpreviewStageCard');
+      if (glslStageWrap && realpreviewStageCard && glslStageWrap.parentElement !== realpreviewStageCard) {
+        realpreviewStageCard.appendChild(glslStageWrap);
+        glslStageWrap.classList.remove('in-studio-stage');
+        glslStageWrap.style.width = '';
+        glslStageWrap.style.height = '';
+      }
+      if (typeof initRealPreview === 'function') {
+        initRealPreview();
+      }
     } else if (tabName === 'hollowbox') {
       if (navTabHollowBox) navTabHollowBox.classList.add('active');
       if (navTabStudio) navTabStudio.classList.remove('active');
       if (navTabConverter) navTabConverter.classList.remove('active');
+      if (navTabRealPreview) navTabRealPreview.classList.remove('active');
       if (headerExportLabel) headerExportLabel.textContent = 'Export HB XML';
       if (controlsPanelElem) controlsPanelElem.style.display = 'none';
       if (previewPanelElem) previewPanelElem.style.display = 'none';
       if (dataPanelElem) dataPanelElem.style.display = 'none';
       if (converterPanelElem) converterPanelElem.style.display = 'none';
+      if (realpreviewPanelElem) realpreviewPanelElem.style.display = 'none';
       if (hollowboxPanelElem) {
         hollowboxPanelElem.style.display = isMobile ? 'block' : 'flex';
         hollowboxPanelElem.style.opacity = '1';
@@ -4373,12 +4713,14 @@
       activeMainWorkspace = 'studio';
       if (navTabStudio) navTabStudio.classList.add('active');
       if (navTabConverter) navTabConverter.classList.remove('active');
+      if (navTabRealPreview) navTabRealPreview.classList.remove('active');
       if (navTabHollowBox) navTabHollowBox.classList.remove('active');
       if (headerExportLabel) headerExportLabel.textContent = 'Export XML';
       if (controlsPanelElem) controlsPanelElem.style.display = '';
       if (previewPanelElem) previewPanelElem.style.display = '';
       if (dataPanelElem) dataPanelElem.style.display = '';
       if (converterPanelElem) converterPanelElem.style.display = 'none';
+      if (realpreviewPanelElem) realpreviewPanelElem.style.display = 'none';
       if (hollowboxPanelElem) hollowboxPanelElem.style.display = 'none';
       const mobileTabStudio = document.getElementById('mobileTabPreview');
       const mobileStudioBtn = document.querySelector('.mobile-tab[data-tab="mobileTabPreview"]');
@@ -4396,7 +4738,11 @@
         mobileStudioBtn.classList.add('active');
         mobileTabStudio.classList.add('active');
       }
-      renderPreview();
+      if (typeof setStudioPreviewMode === 'function') {
+        setStudioPreviewMode(state.studioPreviewMode || 'canvas');
+      } else {
+        renderPreview();
+      }
     }
   }
 
@@ -4405,6 +4751,9 @@
   }
   if (navTabConverter) {
     navTabConverter.addEventListener('click', () => switchMainTab('converter'));
+  }
+  if (navTabRealPreview) {
+    navTabRealPreview.addEventListener('click', () => switchMainTab('realpreview'));
   }
   if (navTabHollowBox) {
     navTabHollowBox.addEventListener('click', () => switchMainTab('hollowbox'));
@@ -5323,6 +5672,8 @@
   let onHollowBoxBezierUpdate = null;
   let initHollowBoxMaker = null;
   let redrawHollowBoxPreview = null;
+  let initRealPreview = null;
+  let renderRealGLSLFrame = null;
 
   (() => {
     // ---- Available Hollow Box Animated Variables ----
@@ -6755,6 +7106,1070 @@
     setTimeout(() => renderHollowBoxPreviewCanvas(0), 100);
   })();
 
+  // =========================================================================
+  // REAL PREVIEW — NATIVE WEBGL GLSL 3D SHADER ENGINE
+  // Renders 3D Flip Layers with native GPU vertex & fragment shaders (wipe2 + flip3)
+  // Supports Front View (Alight Motion output peer) & 3D Orbit Camera (interactive inspection)
+  // =========================================================================
+  (() => {
+    let gl = null;
+    let canvas = null;
+    let program = null;
+    let quadBuffer = null;
+    let uvBuffer = null;
+    let boxBuffer = null;
+    let boxNormalBuffer = null;
+    let animFrameId = null;
+    let isInitialized = false;
+    let locs = {};
+
+    // 3D Camera & View State
+    const camState = {
+      mode: 'front', // 'front' or 'orbit'
+      orbitRotX: 18.0, // pitch in deg
+      orbitRotY: -28.0, // yaw in deg
+      orbitDist: 1800.0, // zoom distance
+      isDragging: false,
+      lastMouseX: 0,
+      lastMouseY: 0,
+      lighting: true,
+      playbackSpeed: 1.0,
+      fps: 60,
+      lastFpsTime: 0,
+      frameCount: 0,
+      bgColor: '#0a0a0e',
+      layerColor: '#e05a3a',
+      randomColors: true,
+      colorSeed: 0
+    };
+
+    const SLICE_PALETTE = [
+      '#f43f5e', '#3b82f6', '#10b981', '#f59e0b',
+      '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16',
+      '#eab308', '#6366f1', '#14b8a6', '#f97316',
+      '#a855f7', '#0ea5e9', '#d946ef', '#22c55e'
+    ];
+
+    // Matrix utilities
+    function mat4Multiply(a, b) {
+      const out = new Float32Array(16);
+      for (let i = 0; i < 4; i++) {
+        const ai0 = a[i], ai1 = a[i+4], ai2 = a[i+8], ai3 = a[i+12];
+        out[i]    = ai0 * b[0] + ai1 * b[1] + ai2 * b[2] + ai3 * b[3];
+        out[i+4]  = ai0 * b[4] + ai1 * b[5] + ai2 * b[6] + ai3 * b[7];
+        out[i+8]  = ai0 * b[8] + ai1 * b[9] + ai2 * b[10] + ai3 * b[11];
+        out[i+12] = ai0 * b[12] + ai1 * b[13] + ai2 * b[14] + ai3 * b[15];
+      }
+      return out;
+    }
+
+    function mat4Perspective(fovyRad, aspect, near, far) {
+      const f = 1.0 / Math.tan(fovyRad / 2);
+      const nf = 1 / (near - far);
+      return new Float32Array([
+        f / aspect, 0, 0, 0,
+        0, f, 0, 0,
+        0, 0, (far + near) * nf, -1,
+        0, 0, 2 * far * near * nf, 0
+      ]);
+    }
+
+    function mat4LookAt(eye, center, up) {
+      let z0 = eye[0] - center[0], z1 = eye[1] - center[1], z2 = eye[2] - center[2];
+      let len = 1 / Math.hypot(z0, z1, z2);
+      z0 *= len; z1 *= len; z2 *= len;
+
+      let x0 = up[1] * z2 - up[2] * z1, x1 = up[2] * z0 - up[0] * z2, x2 = up[0] * z1 - up[1] * z0;
+      len = Math.hypot(x0, x1, x2);
+      if (!len) { x0 = 1; x1 = 0; x2 = 0; } else { len = 1 / len; x0 *= len; x1 *= len; x2 *= len; }
+
+      let y0 = z1 * x2 - z2 * x1, y1 = z2 * x0 - z0 * x2, y2 = z0 * x1 - z1 * x0;
+
+      return new Float32Array([
+        x0, y0, z0, 0,
+        x1, y1, z1, 0,
+        x2, y2, z2, 0,
+        -(x0 * eye[0] + x1 * eye[1] + x2 * eye[2]),
+        -(y0 * eye[0] + y1 * eye[1] + y2 * eye[2]),
+        -(z0 * eye[0] + z1 * eye[1] + z2 * eye[2]),
+        1
+      ]);
+    }
+
+    function mat4RotateX(m, rad) {
+      const s = Math.sin(rad), c = Math.cos(rad);
+      const rot = new Float32Array([
+        1, 0, 0, 0,
+        0, c, s, 0,
+        0, -s, c, 0,
+        0, 0, 0, 1
+      ]);
+      return mat4Multiply(m, rot);
+    }
+
+    function mat4RotateY(m, rad) {
+      const s = Math.sin(rad), c = Math.cos(rad);
+      const rot = new Float32Array([
+        c, 0, -s, 0,
+        0, 1, 0, 0,
+        s, 0, c, 0,
+        0, 0, 0, 1
+      ]);
+      return mat4Multiply(m, rot);
+    }
+
+    function mat3Euler(rxDeg, ryDeg, rzDeg) {
+      const rx = (rxDeg || 0) * (Math.PI / 180);
+      const ry = (ryDeg || 0) * (Math.PI / 180);
+      const rz = (rzDeg || 0) * (Math.PI / 180);
+
+      const sx = Math.sin(rx), cx = Math.cos(rx);
+      const sy = Math.sin(ry), cy = Math.cos(ry);
+      const sz = Math.sin(rz), cz = Math.cos(rz);
+
+      const m00 = cz * cy;
+      const m01 = cz * sy * sx - sz * cx;
+      const m02 = cz * sy * cx + sz * sx;
+
+      const m10 = sz * cy;
+      const m11 = sz * sy * sx + cz * cx;
+      const m12 = sz * sy * cx - cz * sx;
+
+      const m20 = -sy;
+      const m21 = cy * sx;
+      const m22 = cy * cx;
+
+      return new Float32Array([
+        m00, m10, m20,
+        m01, m11, m21,
+        m02, m12, m22
+      ]);
+    }
+
+    function colorToRgbFloat(str, alpha = 1.0) {
+      if (!str) return [0.88, 0.35, 0.23, alpha];
+      str = str.trim();
+      if (str.startsWith('#')) {
+        let c = str.slice(1);
+        if (c.length === 3) c = c.split('').map(x => x + x).join('');
+        const num = parseInt(c, 16);
+        return [((num >> 16) & 255) / 255, ((num >> 8) & 255) / 255, (num & 255) / 255, alpha];
+      }
+      const hslMatch = str.match(/hsl\s*\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)/i);
+      if (hslMatch) {
+        let h = parseFloat(hslMatch[1]) / 360;
+        let s = parseFloat(hslMatch[2]) / 100;
+        let l = parseFloat(hslMatch[3]) / 100;
+        function hue2rgb(p, q, t) {
+          if (t < 0) t += 1;
+          if (t > 1) t -= 1;
+          if (t < 1/6) return p + (q - p) * 6 * t;
+          if (t < 1/2) return q;
+          if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+          return p;
+        }
+        let r, g, b;
+        if (s === 0) {
+          r = g = b = l;
+        } else {
+          let q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+          let p = 2 * l - q;
+          r = hue2rgb(p, q, h + 1/3);
+          g = hue2rgb(p, q, h);
+          b = hue2rgb(p, q, h - 1/3);
+        }
+        return [r, g, b, alpha];
+      }
+      return [0.88, 0.35, 0.23, alpha];
+    }
+
+    // GLSL Vertex Shader Source (Alight Motion 3D Flip Layer & 3D Volumetric Box peer)
+    const VS_SOURCE = `
+precision highp float;
+precision highp int;
+attribute vec3 a_position;
+attribute vec2 a_texCoord;
+attribute vec3 a_normal;
+varying vec2 v_localCoord;
+varying vec3 v_worldPos;
+varying vec3 v_normal;
+
+uniform vec2 u_resolution;
+uniform vec2 u_pivot;
+uniform float u_flipAxis;
+uniform float u_flipAngle;
+uniform mat4 u_modelView;
+uniform mat4 u_projection;
+
+// 3D Box Mode Uniforms
+uniform int u_isBox;
+uniform vec3 u_boxCenter;
+uniform vec3 u_boxHalfSize;
+uniform mat3 u_boxRot;
+
+mat3 getRodriguesMatrix(vec3 axis, float angleRad) {
+    axis = normalize(axis);
+    float s = sin(angleRad);
+    float c = cos(angleRad);
+    float oc = 1.0 - c;
+    return mat3(
+        oc * axis.x * axis.x + c,           oc * axis.x * axis.y - axis.z * s,  oc * axis.z * axis.x + axis.y * s,
+        oc * axis.x * axis.y + axis.z * s,  oc * axis.y * axis.y + c,           oc * axis.y * axis.z - axis.x * s,
+        oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c
+    );
+}
+
+void main() {
+    if (u_isBox == 1) {
+        // True 3D Volumetric Box Mesh Transformation
+        vec3 localBoxPos = a_position * u_boxHalfSize;
+        vec3 rotatedBoxPos = u_boxRot * localBoxPos;
+        vec3 worldPos = u_boxCenter + rotatedBoxPos;
+        v_worldPos = worldPos;
+        v_normal = u_boxRot * a_normal;
+        v_localCoord = vec2(0.0);
+        gl_Position = u_projection * u_modelView * vec4(worldPos, 1.0);
+    } else {
+        // 1. Base mesh geometry: Alight Motion isotropic 200x200 square [-100, +100]
+        // Screen coords: x from -100 (left) to +100 (right), y from -100 (top) to +100 (bottom)
+        vec2 rawLocalPos = vec2(a_position.x * 100.0, -a_position.y * 100.0);
+        v_localCoord = rawLocalPos;
+
+        // 2. Subtract pivot hinge in AM coordinate space
+        vec3 localPos = vec3(rawLocalPos - u_pivot, 0.0);
+
+        // 3. Rotate in true 3D space around flipAxis
+        float axisRad = radians(u_flipAxis);
+        vec3 axisVec = vec3(cos(axisRad), sin(axisRad), 0.0);
+        mat3 rot = getRodriguesMatrix(axisVec, radians(u_flipAngle));
+        vec3 rotatedPos = rot * localPos;
+
+        // 4. Restore pivot hinge
+        rotatedPos.xy += u_pivot;
+
+        // 5. Transform scale to final solid dimensions (W / 200, H / 200)
+        vec3 scaledPos = vec3(
+            rotatedPos.x * (u_resolution.x / 200.0),
+            rotatedPos.y * (u_resolution.y / 200.0),
+            rotatedPos.z * (u_resolution.x / 200.0)
+        );
+
+        v_worldPos = scaledPos;
+        v_normal = rot * vec3(0.0, 0.0, 1.0);
+
+        gl_Position = u_projection * u_modelView * vec4(scaledPos, 1.0);
+    }
+}
+`;
+
+    // GLSL Fragment Shader Source (Alight Motion wipe2 & 3D Box Shading)
+    const FS_SOURCE = `
+precision highp float;
+precision highp int;
+varying vec2 v_localCoord;
+varying vec3 v_worldPos;
+varying vec3 v_normal;
+
+uniform vec2 u_resolution;
+uniform float u_wipeAngle;
+uniform float u_wipeStart;
+uniform float u_wipeEnd;
+uniform vec4 u_wipeBounds;
+uniform float u_feather;
+uniform vec4 u_color;
+uniform int u_enableLight;
+uniform int u_isBox;
+
+void main() {
+    if (u_isBox == 1) {
+        // Volumetric 3D Box Shading
+        vec3 lightDir = normalize(vec3(0.35, 0.55, 0.85));
+        vec3 norm = normalize(v_normal);
+        bool isBack = !gl_FrontFacing;
+        if (isBack) norm = -norm;
+
+        float diff = max(0.42, dot(norm, lightDir));
+        if (u_enableLight == 0) diff = 1.0;
+
+        // Subtle per-face luminance variation so edges and depths are crisply defined
+        float faceShade = 1.0;
+        if (abs(norm.y) > 0.7) {
+            faceShade = (norm.y > 0.0) ? 1.12 : 0.78;
+        } else if (abs(norm.x) > 0.7) {
+            faceShade = (norm.x > 0.0) ? 0.92 : 0.84;
+        } else if (norm.z < -0.3) {
+            faceShade = 0.68;
+        }
+
+        vec3 col = u_color.rgb * diff * faceShade;
+        gl_FragColor = vec4(col, u_color.a);
+        return;
+    }
+
+    // --- Flip Layer Mode ---
+    // 1. Wipe directional projection across isotropic 200x200 square
+    float wRad = radians(u_wipeAngle);
+    vec2 wipeDir = vec2(cos(wRad), sin(wRad));
+
+    // Directional bounding span of [-100, +100]^2
+    float span = 200.0 * (abs(wipeDir.x) + abs(wipeDir.y));
+    float dist = dot(v_localCoord, wipeDir);
+    float normDist = (dist / span) + 0.5;
+
+    // 2. Slice mask evaluation
+    float f = max(0.0005, u_feather);
+    float alpha = smoothstep(u_wipeStart - f, u_wipeStart, normDist) *
+                  (1.0 - smoothstep(u_wipeEnd, u_wipeEnd + f, normDist));
+
+    if (alpha <= 0.001) {
+        discard;
+    }
+
+    // 3. Orthogonal section boundary clipping
+    vec2 normBox = (v_localCoord + 100.0) / 200.0;
+    if (normBox.x < (u_wipeBounds.x - 0.002) || normBox.x > (u_wipeBounds.y + 0.002) ||
+        normBox.y < (u_wipeBounds.z - 0.002) || normBox.y > (u_wipeBounds.w + 0.002)) {
+        discard;
+    }
+
+    // 4. Directional 3D lighting + Backface shading
+    vec3 lightDir = normalize(vec3(0.35, 0.45, 1.0));
+    vec3 norm = normalize(v_normal);
+    bool isBackface = !gl_FrontFacing;
+    if (isBackface) norm = -norm;
+
+    float diff = max(0.45, dot(norm, lightDir));
+    if (u_enableLight == 0) diff = 1.0;
+
+    vec3 baseColor = u_color.rgb;
+    if (isBackface) {
+        baseColor = baseColor * 0.72 + vec3(0.04, 0.06, 0.10);
+    }
+
+    gl_FragColor = vec4(baseColor * diff, u_color.a * alpha);
+}
+`;
+
+    function compileGLProgram(glCtx, vsSrc, fsSrc) {
+      function createShader(type, src) {
+        const shader = glCtx.createShader(type);
+        glCtx.shaderSource(shader, src);
+        glCtx.compileShader(shader);
+        if (!glCtx.getShaderParameter(shader, glCtx.COMPILE_STATUS)) {
+          console.error('GLSL Compile Error:', glCtx.getShaderInfoLog(shader));
+          glCtx.deleteShader(shader);
+          return null;
+        }
+        return shader;
+      }
+
+      const vs = createShader(glCtx.VERTEX_SHADER, vsSrc);
+      const fs = createShader(glCtx.FRAGMENT_SHADER, fsSrc);
+      if (!vs || !fs) return null;
+
+      const prog = glCtx.createProgram();
+      glCtx.attachShader(prog, vs);
+      glCtx.attachShader(prog, fs);
+      glCtx.linkProgram(prog);
+
+      if (!glCtx.getProgramParameter(prog, glCtx.LINK_STATUS)) {
+        console.error('GLSL Link Error:', glCtx.getProgramInfoLog(prog));
+        return null;
+      }
+      return prog;
+    }
+
+    function initGLContext() {
+      canvas = document.getElementById('glslRealCanvas');
+      if (!canvas) return false;
+
+      gl = canvas.getContext('webgl', { antialias: true, alpha: true, depth: true, preserveDrawingBuffer: true }) ||
+           canvas.getContext('experimental-webgl', { preserveDrawingBuffer: true });
+      if (!gl) {
+        console.warn('WebGL is not supported in this environment');
+        return false;
+      }
+
+      program = compileGLProgram(gl, VS_SOURCE, FS_SOURCE);
+      if (!program) return false;
+
+      // Attribute & uniform bindings
+      locs = {
+        a_position: gl.getAttribLocation(program, 'a_position'),
+        a_texCoord: gl.getAttribLocation(program, 'a_texCoord'),
+        a_normal: gl.getAttribLocation(program, 'a_normal'),
+        u_resolution: gl.getUniformLocation(program, 'u_resolution'),
+        u_pivot: gl.getUniformLocation(program, 'u_pivot'),
+        u_flipAxis: gl.getUniformLocation(program, 'u_flipAxis'),
+        u_flipAngle: gl.getUniformLocation(program, 'u_flipAngle'),
+        u_modelView: gl.getUniformLocation(program, 'u_modelView'),
+        u_projection: gl.getUniformLocation(program, 'u_projection'),
+        u_wipeAngle: gl.getUniformLocation(program, 'u_wipeAngle'),
+        u_wipeStart: gl.getUniformLocation(program, 'u_wipeStart'),
+        u_wipeEnd: gl.getUniformLocation(program, 'u_wipeEnd'),
+        u_wipeBounds: gl.getUniformLocation(program, 'u_wipeBounds'),
+        u_feather: gl.getUniformLocation(program, 'u_feather'),
+        u_color: gl.getUniformLocation(program, 'u_color'),
+        u_enableLight: gl.getUniformLocation(program, 'u_enableLight'),
+        u_isBox: gl.getUniformLocation(program, 'u_isBox'),
+        u_boxCenter: gl.getUniformLocation(program, 'u_boxCenter'),
+        u_boxHalfSize: gl.getUniformLocation(program, 'u_boxHalfSize'),
+        u_boxRot: gl.getUniformLocation(program, 'u_boxRot'),
+      };
+
+      // VBO buffers
+      const quadVertices = new Float32Array([
+        -1, -1, 0,
+         1, -1, 0,
+        -1,  1, 0,
+        -1,  1, 0,
+         1, -1, 0,
+         1,  1, 0,
+      ]);
+      quadBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
+
+      const quadUVs = new Float32Array([
+        0, 0,
+        1, 0,
+        0, 1,
+        0, 1,
+        1, 0,
+        1, 1,
+      ]);
+      uvBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, quadUVs, gl.STATIC_DRAW);
+
+      // Unit 3D Box geometry: 36 vertices (6 faces x 2 triangles)
+      const boxVertices = new Float32Array([
+        // Front (+Z)
+        -1, -1,  1,   1, -1,  1,   1,  1,  1,
+        -1, -1,  1,   1,  1,  1,  -1,  1,  1,
+        // Back (-Z)
+         1, -1, -1,  -1, -1, -1,  -1,  1, -1,
+         1, -1, -1,  -1,  1, -1,   1,  1, -1,
+        // Top (+Y)
+        -1,  1,  1,   1,  1,  1,   1,  1, -1,
+        -1,  1,  1,   1,  1, -1,  -1,  1, -1,
+        // Bottom (-Y)
+        -1, -1, -1,   1, -1, -1,   1, -1,  1,
+        -1, -1, -1,   1, -1,  1,  -1, -1,  1,
+        // Right (+X)
+         1, -1,  1,   1, -1, -1,   1,  1, -1,
+         1, -1,  1,   1,  1, -1,   1,  1,  1,
+        // Left (-X)
+        -1, -1, -1,  -1, -1,  1,  -1,  1,  1,
+        -1, -1, -1,  -1,  1,  1,  -1,  1, -1,
+      ]);
+      boxBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, boxBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, boxVertices, gl.STATIC_DRAW);
+
+      const boxNormals = new Float32Array([
+        // Front
+        0, 0, 1,  0, 0, 1,  0, 0, 1,
+        0, 0, 1,  0, 0, 1,  0, 0, 1,
+        // Back
+        0, 0, -1, 0, 0, -1, 0, 0, -1,
+        0, 0, -1, 0, 0, -1, 0, 0, -1,
+        // Top
+        0, 1, 0,  0, 1, 0,  0, 1, 0,
+        0, 1, 0,  0, 1, 0,  0, 1, 0,
+        // Bottom
+        0, -1, 0, 0, -1, 0, 0, -1, 0,
+        0, -1, 0, 0, -1, 0, 0, -1, 0,
+        // Right
+        1, 0, 0,  1, 0, 0,  1, 0, 0,
+        1, 0, 0,  1, 0, 0,  1, 0, 0,
+        // Left
+        -1, 0, 0, -1, 0, 0, -1, 0, 0,
+        -1, 0, 0, -1, 0, 0, -1, 0, 0,
+      ]);
+      boxNormalBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, boxNormalBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, boxNormals, gl.STATIC_DRAW);
+
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthFunc(gl.LEQUAL);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+      // Populate GLSL Code Viewer in drawer
+      const vertCodeEl = document.getElementById('rpVertCode');
+      const fragCodeEl = document.getElementById('rpFragCode');
+      if (vertCodeEl) vertCodeEl.textContent = VS_SOURCE.trim();
+      if (fragCodeEl) fragCodeEl.textContent = FS_SOURCE.trim();
+
+      return true;
+    }
+
+    renderRealGLSLFrame = function(timeSec = state.currentTimeSec) {
+      if (!gl || !program || !canvas) return;
+
+      const wrap = document.getElementById('glslStageWrap');
+      const dpr = window.devicePixelRatio || 1;
+      const targetW = (wrap && wrap.clientWidth > 10) ? wrap.clientWidth : (state.solidWidth || 500);
+      const targetH = (wrap && wrap.clientHeight > 10) ? wrap.clientHeight : (state.solidHeight || 625);
+
+      if (canvas.width !== Math.round(targetW * dpr) || canvas.height !== Math.round(targetH * dpr)) {
+        canvas.width = Math.round(targetW * dpr);
+        canvas.height = Math.round(targetH * dpr);
+      }
+
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      const bg = colorToRgbFloat(camState.bgColor || '#0a0a0e');
+      gl.clearColor(bg[0], bg[1], bg[2], 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      gl.useProgram(program);
+
+      const isBoxMode = (state.animType === 'box' || state.animType === 'boxv2' || state.wipeMethod === 'boxv2');
+
+      // Bind attributes according to mode
+      if (isBoxMode) {
+        if (locs.a_position >= 0) {
+          gl.bindBuffer(gl.ARRAY_BUFFER, boxBuffer);
+          gl.enableVertexAttribArray(locs.a_position);
+          gl.vertexAttribPointer(locs.a_position, 3, gl.FLOAT, false, 0, 0);
+        }
+        if (locs.a_normal >= 0) {
+          gl.bindBuffer(gl.ARRAY_BUFFER, boxNormalBuffer);
+          gl.enableVertexAttribArray(locs.a_normal);
+          gl.vertexAttribPointer(locs.a_normal, 3, gl.FLOAT, false, 0, 0);
+        }
+        if (locs.a_texCoord >= 0) {
+          gl.disableVertexAttribArray(locs.a_texCoord);
+        }
+        if (locs.u_isBox) gl.uniform1i(locs.u_isBox, 1);
+      } else {
+        if (locs.a_position >= 0) {
+          gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+          gl.enableVertexAttribArray(locs.a_position);
+          gl.vertexAttribPointer(locs.a_position, 3, gl.FLOAT, false, 0, 0);
+        }
+        if (locs.a_texCoord >= 0) {
+          gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+          gl.enableVertexAttribArray(locs.a_texCoord);
+          gl.vertexAttribPointer(locs.a_texCoord, 2, gl.FLOAT, false, 0, 0);
+        }
+        if (locs.a_normal >= 0) {
+          gl.disableVertexAttribArray(locs.a_normal);
+        }
+        if (locs.u_isBox) gl.uniform1i(locs.u_isBox, 0);
+      }
+
+      // Matrices setup
+      const aspect = canvas.width / (canvas.height || 1);
+      const proj = mat4Perspective((42 * Math.PI) / 180, aspect, 10.0, 10000.0);
+
+      const maxDim = Math.max(state.solidWidth, state.solidHeight);
+      let view;
+      if (camState.mode === 'front') {
+        const frontDist = maxDim * 1.52;
+        view = mat4LookAt([0, 0, frontDist], [0, 0, 0], [0, 1, 0]);
+      } else {
+        view = mat4LookAt([0, 0, camState.orbitDist], [0, 0, 0], [0, 1, 0]);
+        view = mat4RotateX(view, (camState.orbitRotX * Math.PI) / 180);
+        view = mat4RotateY(view, (camState.orbitRotY * Math.PI) / 180);
+      }
+
+      const layers = calculateLayers();
+      let lastUniforms = null;
+      let firstBoxRot = { x: 0, y: 0, z: 0 };
+
+      layers.forEach((layer, idx) => {
+        let colorHex;
+        if (camState.randomColors) {
+          colorHex = SLICE_PALETTE[(idx + camState.colorSeed) % SLICE_PALETTE.length];
+        } else {
+          colorHex = camState.layerColor || state.solidColor || '#e05a3a';
+        }
+        const color = colorToRgbFloat(colorHex);
+
+        if (isBoxMode) {
+          let boxRotX = 0, boxRotY = 0, boxRotZ = 0;
+          if (state.animType === 'boxv2' || state.wipeMethod === 'boxv2') {
+            let eased = 0;
+            if (timeSec > layer.flipStartT) {
+              if (timeSec >= layer.flipEndT) eased = 1;
+              else {
+                const progress = (timeSec - layer.flipStartT) / (layer.flipEndT - layer.flipStartT);
+                const [x1, y1, x2, y2] = (layer.flipEasing || '0.79, 0.00, 0.59, 1.00').split(',').map(Number);
+                eased = bezierY(progress, x1, y1, x2, y2);
+              }
+            }
+            boxRotX = (layer.boxv2XStart || 0) + ((layer.boxv2XEnd || 0) - (layer.boxv2XStart || 0)) * eased;
+            boxRotY = (layer.boxv2YStart || 0) + ((layer.boxv2YEnd || 0) - (layer.boxv2YStart || 0)) * eased;
+            boxRotZ = (layer.boxv2ZStart || 0) + ((layer.boxv2ZEnd || 0) - (layer.boxv2ZStart || 0)) * eased;
+          } else {
+            let orientEased = 0;
+            const orientStartT = layer.orientStartT;
+            const orientEndT = layer.orientEndT;
+            if (timeSec > orientStartT && orientEndT > orientStartT) {
+              if (timeSec >= orientEndT) orientEased = 1;
+              else {
+                const progress = (timeSec - orientStartT) / (orientEndT - orientStartT);
+                const [x1, y1, x2, y2] = (state.box.orientEasing || '0.25, 0.10, 0.25, 1.00').split(',').map(Number);
+                orientEased = bezierY(progress, x1, y1, x2, y2);
+              }
+            }
+            let rotateEased = 0;
+            const rotateStartT = layer.rotateStartT;
+            const rotateEndT = layer.rotateEndT;
+            if (timeSec > rotateStartT && rotateEndT > rotateStartT) {
+              if (timeSec >= rotateEndT) rotateEased = 1;
+              else {
+                const progress = (timeSec - rotateStartT) / (rotateEndT - rotateStartT);
+                const [x1, y1, x2, y2] = (state.box.rotateEasing || '0.25, 0.10, 0.25, 1.00').split(',').map(Number);
+                rotateEased = bezierY(progress, x1, y1, x2, y2);
+              }
+            }
+            const ox = state.box.orientStartX + (state.box.orientEndX - state.box.orientStartX) * orientEased;
+            const oy = state.box.orientStartY + (state.box.orientEndY - state.box.orientStartY) * orientEased;
+            const oz = state.box.orientStartZ + (state.box.orientEndZ - state.box.orientStartZ) * orientEased;
+            const rx = state.box.rotateStartX + (state.box.rotateEndX - state.box.rotateStartX) * rotateEased;
+            const ry = state.box.rotateStartY + (state.box.rotateEndY - state.box.rotateStartY) * rotateEased;
+            const rz = state.box.rotateStartZ + (state.box.rotateEndZ - state.box.rotateStartZ) * rotateEased;
+            boxRotX = ox + rx;
+            boxRotY = oy + ry;
+            boxRotZ = oz + rz;
+          }
+
+          if (idx === 0) firstBoxRot = { x: boxRotX, y: boxRotY, z: boxRotZ };
+
+          const bX1 = layer.wipeXStart !== undefined ? layer.wipeXStart : 0.0;
+          const bX2 = layer.wipeXEnd !== undefined ? layer.wipeXEnd : 1.0;
+          const bY1 = layer.wipeYStart !== undefined ? layer.wipeYStart : 0.0;
+          const bY2 = layer.wipeYEnd !== undefined ? layer.wipeYEnd : 1.0;
+
+          const solidW = state.solidWidth;
+          const solidH = state.solidHeight;
+
+          let sliceW = Math.max(2, (bX2 - bX1) * solidW);
+          let sliceH = Math.max(2, (bY2 - bY1) * solidH);
+          let sliceCx = ((bX1 + bX2) / 2 - 0.5) * solidW;
+          let sliceCy = (0.5 - (bY1 + bY2) / 2) * solidH;
+
+          if (state.wipeMethod === 'mask') {
+            sliceW = layer.width;
+            sliceH = layer.height;
+            sliceCx = layer.locX - (state.projectWidth / 2);
+            sliceCy = (state.projectHeight / 2) - layer.locY;
+          }
+
+          const sliceDepth = Math.max(35, Math.min(sliceW, sliceH) * 0.65);
+          const halfX = sliceW / 2;
+          const halfY = sliceH / 2;
+          const halfZ = sliceDepth / 2;
+
+          const rotMat = mat3Euler(boxRotX, boxRotY, boxRotZ);
+
+          gl.uniform3f(locs.u_boxCenter, sliceCx, sliceCy, 0.0);
+          gl.uniform3f(locs.u_boxHalfSize, halfX, halfY, halfZ);
+          gl.uniformMatrix3fv(locs.u_boxRot, false, rotMat);
+          gl.uniformMatrix4fv(locs.u_modelView, false, view);
+          gl.uniformMatrix4fv(locs.u_projection, false, proj);
+          gl.uniform4fv(locs.u_color, color);
+          gl.uniform1i(locs.u_enableLight, camState.lighting ? 1 : 0);
+
+          gl.drawArrays(gl.TRIANGLES, 0, 36);
+
+          lastUniforms = {
+            u_time: timeSec.toFixed(3),
+            u_mode: '3D Box Volumetric',
+            u_rotation: `(${boxRotX.toFixed(1)}°, ${boxRotY.toFixed(1)}°, ${boxRotZ.toFixed(1)}°)`,
+            u_boxCenter: `(${sliceCx.toFixed(1)}, ${sliceCy.toFixed(1)}, 0)`,
+            u_boxHalfSize: `(${halfX.toFixed(1)}, ${halfY.toFixed(1)}, ${halfZ.toFixed(1)})`,
+            u_color: colorHex,
+            u_enableLight: camState.lighting ? '1 (Active)' : '0 (Off)',
+            cam_mode: camState.mode.toUpperCase(),
+          };
+        } else {
+          // Flip layer mode
+          let eased = 0;
+          if (timeSec > layer.flipStartT) {
+            if (timeSec >= layer.flipEndT) {
+              eased = 1;
+            } else {
+              const progress = (timeSec - layer.flipStartT) / (layer.flipEndT - layer.flipStartT);
+              const [x1, y1, x2, y2] = (layer.flipEasing || '0.79, 0.00, 0.59, 1.00').split(',').map(Number);
+              eased = bezierY(progress, x1, y1, x2, y2);
+            }
+          }
+
+          const curAngle = layer.flipStartAngle + (layer.flipEndAngle - layer.flipStartAngle) * eased;
+          const curAxis = layer.flipAxis !== undefined ? layer.flipAxis : 45.0;
+          const curStart = layer.wipeStart !== undefined ? layer.wipeStart : 0.0;
+          const curEnd = layer.wipeEnd !== undefined ? layer.wipeEnd : 1.0;
+          const curWipeAngle = layer.wipeAngle !== undefined ? layer.wipeAngle : 45.0;
+          const bX1 = layer.wipeXStart !== undefined ? layer.wipeXStart : 0.0;
+          const bX2 = layer.wipeXEnd !== undefined ? layer.wipeXEnd : 1.0;
+          const bY1 = layer.wipeYStart !== undefined ? layer.wipeYStart : 0.0;
+          const bY2 = layer.wipeYEnd !== undefined ? layer.wipeYEnd : 1.0;
+
+          gl.uniform2f(locs.u_resolution, state.solidWidth, state.solidHeight);
+          gl.uniform2f(locs.u_pivot, layer.pivotX || 0.0, layer.pivotY || 0.0);
+          gl.uniform1f(locs.u_flipAxis, curAxis);
+          gl.uniform1f(locs.u_flipAngle, curAngle);
+          gl.uniformMatrix4fv(locs.u_modelView, false, view);
+          gl.uniformMatrix4fv(locs.u_projection, false, proj);
+          gl.uniform1f(locs.u_wipeAngle, curWipeAngle);
+          gl.uniform1f(locs.u_wipeStart, curStart);
+          gl.uniform1f(locs.u_wipeEnd, curEnd);
+          gl.uniform4f(locs.u_wipeBounds, bX1, bX2, bY1, bY2);
+          gl.uniform1f(locs.u_feather, (state.wipeSoftness || 0) / 100);
+          gl.uniform4fv(locs.u_color, color);
+          gl.uniform1i(locs.u_enableLight, camState.lighting ? 1 : 0);
+
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+          lastUniforms = {
+            u_time: timeSec.toFixed(3),
+            u_resolution: `${state.solidWidth} × ${state.solidHeight}`,
+            u_flipAxis: `${curAxis.toFixed(1)}°`,
+            u_flipAngle: `${curAngle.toFixed(1)}°`,
+            u_pivot: `(${layer.pivotX.toFixed(1)}, ${layer.pivotY.toFixed(1)})`,
+            u_wipeAngle: `${curWipeAngle.toFixed(1)}°`,
+            u_wipeStart: curStart.toFixed(3),
+            u_wipeEnd: curEnd.toFixed(3),
+            u_wipeBounds: `[${bX1.toFixed(2)}, ${bX2.toFixed(2)}, ${bY1.toFixed(2)}, ${bY2.toFixed(2)}]`,
+            u_color: colorHex,
+            u_enableLight: camState.lighting ? '1 (Active)' : '0 (Off)',
+            cam_mode: camState.mode.toUpperCase(),
+          };
+        }
+      });
+
+      // Update Telemetry HUD
+      const hudAxis = document.getElementById('rpHudAxis');
+      const hudAngle = document.getElementById('rpHudAngle');
+      const hudWipe = document.getElementById('rpHudWipe');
+      const hudLayers = document.getElementById('rpHudLayers');
+      const hudFps = document.getElementById('rpHudFps');
+
+      if (isBoxMode && layers.length > 0) {
+        if (hudAxis) hudAxis.textContent = `Mode: 3D Box`;
+        if (hudAngle) hudAngle.textContent = `Rot: ${firstBoxRot.x.toFixed(1)}°, ${firstBoxRot.y.toFixed(1)}°, ${firstBoxRot.z.toFixed(1)}°`;
+        if (hudWipe) hudWipe.textContent = `3D Cuboid Slices`;
+      } else {
+        if (hudAxis && layers.length > 0) hudAxis.textContent = `Axis: ${(layers[0].flipAxis || 0).toFixed(1)}°`;
+        if (hudAngle && layers.length > 0) {
+          let e = 0;
+          if (timeSec > layers[0].flipStartT) {
+            if (timeSec >= layers[0].flipEndT) e = 1;
+            else {
+              const p = (timeSec - layers[0].flipStartT) / (layers[0].flipEndT - layers[0].flipStartT);
+              const [x1, y1, x2, y2] = (layers[0].flipEasing || '0.79, 0.00, 0.59, 1.00').split(',').map(Number);
+              e = bezierY(p, x1, y1, x2, y2);
+            }
+          }
+          const ang = layers[0].flipStartAngle + (layers[0].flipEndAngle - layers[0].flipStartAngle) * e;
+          hudAngle.textContent = `Angle: ${ang.toFixed(1)}°`;
+        }
+        if (hudWipe && layers.length > 0) {
+          hudWipe.textContent = `Wipe: ${((layers[0].wipeStart || 0) * 100).toFixed(0)}% → ${((layers[0].wipeEnd || 1) * 100).toFixed(0)}%`;
+        }
+      }
+      if (hudLayers) hudLayers.textContent = `${layers.length} Slices`;
+      if (hudLayers) hudLayers.textContent = `${layers.length} Slices`;
+
+      // Update FPS calculation
+      camState.frameCount++;
+      const now = performance.now();
+      if (now - camState.lastFpsTime >= 500) {
+        camState.fps = Math.round((camState.frameCount * 1000) / (now - camState.lastFpsTime));
+        camState.frameCount = 0;
+        camState.lastFpsTime = now;
+        if (hudFps) hudFps.textContent = `${camState.fps} FPS`;
+      }
+
+      // Update Uniforms Table in inspector
+      if (lastUniforms) {
+        const tbody = document.getElementById('rpUniformsTableBody');
+        if (tbody && document.getElementById('rpViewUniforms')?.style.display !== 'none') {
+          let rows = '';
+          for (const [k, v] of Object.entries(lastUniforms)) {
+            rows += `<tr><td>${k}</td><td>uniform</td><td>${v}</td></tr>`;
+          }
+          tbody.innerHTML = rows;
+        }
+      }
+
+      // Sync Scrubber & Timecode
+      const scrubber = document.getElementById('rpScrubber');
+      const timeDisplay = document.getElementById('rpTimeDisplay');
+      const durationSec = parseTimeToSeconds(state.projectDurationStr) || 1;
+      if (scrubber) {
+        scrubber.max = durationSec;
+        scrubber.value = timeSec;
+      }
+      if (timeDisplay) timeDisplay.textContent = timeSec.toFixed(2) + 's';
+    }
+
+    function realPreviewLoop() {
+      if (activeMainWorkspace === 'realpreview') {
+        if (state.isPlaying) {
+          // Progress time
+          const durationSec = parseTimeToSeconds(state.projectDurationStr) || 1;
+          state.currentTimeSec += (0.0166 * camState.playbackSpeed);
+          if (state.currentTimeSec >= durationSec) {
+            state.currentTimeSec = state.loop !== false ? 0 : durationSec;
+          }
+        }
+        renderRealGLSLFrame(state.currentTimeSec);
+        animFrameId = requestAnimationFrame(realPreviewLoop);
+      }
+    }
+
+    function initListeners() {
+      // Camera mode buttons
+      const frontBtn = document.getElementById('rpCamFrontBtn');
+      const orbitBtn = document.getElementById('rpCamOrbitBtn');
+      const hint = document.getElementById('rpOrbitHint');
+
+      if (frontBtn && orbitBtn) {
+        frontBtn.addEventListener('click', () => {
+          camState.mode = 'front';
+          frontBtn.classList.add('active');
+          orbitBtn.classList.remove('active');
+          if (hint) hint.style.display = 'none';
+          renderRealGLSLFrame();
+        });
+        orbitBtn.addEventListener('click', () => {
+          camState.mode = 'orbit';
+          orbitBtn.classList.add('active');
+          frontBtn.classList.remove('active');
+          if (hint) hint.style.display = 'block';
+          renderRealGLSLFrame();
+        });
+      }
+
+      // Lighting toggle
+      const lightBtn = document.getElementById('rpToggleLightingBtn');
+      if (lightBtn) {
+        lightBtn.addEventListener('click', () => {
+          camState.lighting = !camState.lighting;
+          lightBtn.textContent = camState.lighting ? 'Lighting: ON' : 'Lighting: OFF';
+          renderRealGLSLFrame();
+        });
+      }
+
+      // Background & Layer Color Customization
+      const bgPicker = document.getElementById('rpBgColorPicker');
+      if (bgPicker) {
+        bgPicker.value = camState.bgColor;
+        bgPicker.addEventListener('input', (e) => {
+          camState.bgColor = e.target.value;
+          const stageWrap = document.getElementById('glslStageWrap');
+          if (stageWrap) stageWrap.style.background = camState.bgColor;
+          renderRealGLSLFrame();
+        });
+      }
+
+      const layerPicker = document.getElementById('rpLayerColorPicker');
+      if (layerPicker) {
+        layerPicker.value = camState.layerColor;
+        layerPicker.addEventListener('input', (e) => {
+          camState.layerColor = e.target.value;
+          renderRealGLSLFrame();
+        });
+      }
+
+      const randColorBtn = document.getElementById('rpToggleRandomColorsBtn');
+      if (randColorBtn) {
+        randColorBtn.classList.toggle('active', camState.randomColors);
+        randColorBtn.textContent = camState.randomColors ? 'Random Colors: ON' : 'Random Colors: OFF';
+        randColorBtn.addEventListener('click', () => {
+          camState.randomColors = !camState.randomColors;
+          randColorBtn.classList.toggle('active', camState.randomColors);
+          randColorBtn.textContent = camState.randomColors ? 'Random Colors: ON' : 'Random Colors: OFF';
+          renderRealGLSLFrame();
+        });
+      }
+
+      const shuffleBtn = document.getElementById('rpShuffleColorsBtn');
+      if (shuffleBtn) {
+        shuffleBtn.addEventListener('click', () => {
+          camState.colorSeed = (camState.colorSeed + 1) % SLICE_PALETTE.length;
+          if (!camState.randomColors) {
+            camState.randomColors = true;
+            if (randColorBtn) {
+              randColorBtn.classList.add('active');
+              randColorBtn.textContent = 'Random Colors: ON';
+            }
+          }
+          renderRealGLSLFrame();
+        });
+      }
+
+      // Code drawer toggle
+      const codeToggleBtn = document.getElementById('rpToggleShaderCodeBtn');
+      const inspectorCard = document.getElementById('rpInspectorCard');
+      if (codeToggleBtn && inspectorCard) {
+        codeToggleBtn.addEventListener('click', () => {
+          const isHidden = inspectorCard.style.display === 'none';
+          inspectorCard.style.display = isHidden ? 'flex' : 'none';
+          codeToggleBtn.classList.toggle('active', isHidden);
+          const layout = document.getElementById('realpreviewLayout');
+          if (layout) {
+            layout.style.gridTemplateColumns = isHidden ? 'minmax(0, 1.35fr) minmax(360px, 1fr)' : '1fr';
+          }
+          renderRealGLSLFrame();
+        });
+      }
+
+      // Drawer view tabs
+      const tabVert = document.getElementById('rpTabVertBtn');
+      const tabFrag = document.getElementById('rpTabFragBtn');
+      const tabUniforms = document.getElementById('rpTabUniformsBtn');
+      const viewVert = document.getElementById('rpViewVert');
+      const viewFrag = document.getElementById('rpViewFrag');
+      const viewUniforms = document.getElementById('rpViewUniforms');
+
+      function switchDrawerView(view) {
+        [tabVert, tabFrag, tabUniforms].forEach(b => b?.classList.remove('active'));
+        [viewVert, viewFrag, viewUniforms].forEach(v => { if (v) v.style.display = 'none'; });
+
+        if (view === 'frag') {
+          tabFrag?.classList.add('active');
+          if (viewFrag) viewFrag.style.display = 'block';
+        } else if (view === 'uniforms') {
+          tabUniforms?.classList.add('active');
+          if (viewUniforms) viewUniforms.style.display = 'block';
+        } else {
+          tabVert?.classList.add('active');
+          if (viewVert) viewVert.style.display = 'block';
+        }
+      }
+
+      if (tabVert) tabVert.addEventListener('click', () => switchDrawerView('vert'));
+      if (tabFrag) tabFrag.addEventListener('click', () => switchDrawerView('frag'));
+      if (tabUniforms) tabUniforms.addEventListener('click', () => switchDrawerView('uniforms'));
+
+      // 3D Camera Orbit Drag
+      const stageWrap = document.getElementById('glslStageWrap');
+      if (stageWrap) {
+        stageWrap.addEventListener('pointerdown', (e) => {
+          camState.isDragging = true;
+          camState.lastMouseX = e.clientX;
+          camState.lastMouseY = e.clientY;
+          try { stageWrap.setPointerCapture(e.pointerId); } catch (_) {}
+        });
+
+        stageWrap.addEventListener('pointermove', (e) => {
+          if (!camState.isDragging) return;
+          const dx = e.clientX - camState.lastMouseX;
+          const dy = e.clientY - camState.lastMouseY;
+          camState.lastMouseX = e.clientX;
+          camState.lastMouseY = e.clientY;
+
+          if (camState.mode !== 'orbit') {
+            camState.mode = 'orbit';
+            orbitBtn?.classList.add('active');
+            frontBtn?.classList.remove('active');
+            if (hint) hint.style.display = 'block';
+          }
+
+          camState.orbitRotY += dx * 0.45;
+          camState.orbitRotX = Math.max(-85, Math.min(85, camState.orbitRotX + dy * 0.45));
+          renderRealGLSLFrame();
+        });
+
+        const stopDrag = (e) => {
+          camState.isDragging = false;
+          try { stageWrap.releasePointerCapture(e.pointerId); } catch (_) {}
+        };
+        stageWrap.addEventListener('pointerup', stopDrag);
+        stageWrap.addEventListener('pointercancel', stopDrag);
+
+        stageWrap.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          camState.orbitDist = Math.max(400, Math.min(6000, camState.orbitDist + e.deltaY * 1.5));
+          renderRealGLSLFrame();
+        }, { passive: false });
+      }
+
+      // Transport controls
+      const playBtn = document.getElementById('rpPlayBtn');
+      const scrubber = document.getElementById('rpScrubber');
+      const stepBackBtn = document.getElementById('rpStepBackBtn');
+      const stepFwdBtn = document.getElementById('rpStepFwdBtn');
+
+      function syncPlayIcons() {
+        const svgPlay = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+        const svgPause = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+        const icon = document.getElementById('rpPlayIcon');
+        if (icon) icon.innerHTML = state.isPlaying ? svgPause : svgPlay;
+      }
+
+      if (playBtn) {
+        playBtn.addEventListener('click', () => {
+          state.isPlaying = !state.isPlaying;
+          syncPlayIcons();
+        });
+      }
+
+      if (scrubber) {
+        scrubber.addEventListener('input', () => {
+          state.currentTimeSec = parseFloat(scrubber.value);
+          renderRealGLSLFrame(state.currentTimeSec);
+        });
+      }
+
+      if (stepBackBtn) {
+        stepBackBtn.addEventListener('click', () => {
+          const fps = state.fps || 60;
+          state.currentTimeSec = Math.max(0, state.currentTimeSec - 1 / fps);
+          renderRealGLSLFrame(state.currentTimeSec);
+        });
+      }
+
+      if (stepFwdBtn) {
+        stepFwdBtn.addEventListener('click', () => {
+          const fps = state.fps || 60;
+          const dur = parseTimeToSeconds(state.projectDurationStr) || 1;
+          state.currentTimeSec = Math.min(dur, state.currentTimeSec + 1 / fps);
+          renderRealGLSLFrame(state.currentTimeSec);
+        });
+      }
+
+      // Speed pills
+      document.querySelectorAll('.rp-speed-group .rp-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          document.querySelectorAll('.rp-speed-group .rp-pill').forEach(p => p.classList.remove('active'));
+          pill.classList.add('active');
+          camState.playbackSpeed = parseFloat(pill.dataset.speed) || 1.0;
+        });
+      });
+    }
+
+    // Public Initializer called when switching to "realpreview" tab
+    initRealPreview = function () {
+      if (!isInitialized) {
+        const ok = initGLContext();
+        if (ok) {
+          initListeners();
+          isInitialized = true;
+        }
+      }
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      camState.lastFpsTime = performance.now();
+      camState.frameCount = 0;
+      realPreviewLoop();
+    };
+
+    // Auto-init on script load
+    setTimeout(() => {
+      if (document.getElementById('glslRealCanvas')) {
+        initGLContext();
+        initListeners();
+        isInitialized = true;
+      }
+    }, 200);
+  })();
+
   // ==========================================
   // MOBILE SHELL & RESPONSIVE VIEWPORT OBSERVERS
   // ==========================================
@@ -6765,12 +8180,14 @@
     const previewPanel  = document.getElementById('preview-panel');
     const dataPanel     = document.getElementById('data-panel');
     const converterPanel = document.getElementById('converter-panel');
+    const realpreviewPanel = document.getElementById('realpreview-panel');
     const hollowboxPanel = document.getElementById('hollowboxPanel');
 
     const mobileConfigSlot    = document.getElementById('mobileConfigSlot');
     const mobilePreviewSlot   = document.getElementById('mobilePreviewSlot');
     const mobileDataSlot      = document.getElementById('mobileDataSlot');
     const mobileConverterSlot = document.getElementById('mobileConverterSlot');
+    const mobileRealPreviewSlot = document.getElementById('mobileRealPreviewSlot');
     const mobileHollowBoxSlot = document.getElementById('mobileHollowBoxSlot');
     const mobileTabBar        = document.getElementById('mobileTabBar');
 
@@ -6801,7 +8218,7 @@
       }
     }
 
-    [controlsBody, canvasContainer, playbackControls, formulasCard, tableContainer, xmlSection, converterPanel, hollowboxPanel]
+    [controlsBody, canvasContainer, playbackControls, formulasCard, tableContainer, xmlSection, converterPanel, realpreviewPanel, hollowboxPanel]
       .forEach(saveOrigin);
 
     function moveToMobile() {
@@ -6815,6 +8232,10 @@
         converterPanel.style.display = 'block';
         mobileConverterSlot.appendChild(converterPanel);
       }
+      if (realpreviewPanel && mobileRealPreviewSlot) {
+        realpreviewPanel.style.display = 'block';
+        mobileRealPreviewSlot.appendChild(realpreviewPanel);
+      }
       if (hollowboxPanel && mobileHollowBoxSlot) {
         hollowboxPanel.style.display = 'block';
         mobileHollowBoxSlot.appendChild(hollowboxPanel);
@@ -6822,12 +8243,15 @@
     }
 
     function moveToDesktop() {
-      [controlsBody, canvasContainer, playbackControls, formulasCard, tableContainer, xmlSection, converterPanel, hollowboxPanel]
+      [controlsBody, canvasContainer, playbackControls, formulasCard, tableContainer, xmlSection, converterPanel, realpreviewPanel, hollowboxPanel]
         .forEach(restoreOrigin);
       const isConverterActive = navTabConverter && navTabConverter.classList.contains('active');
+      const isRealPreviewActive = navTabRealPreview && navTabRealPreview.classList.contains('active');
       const isHollowBoxActive = navTabHollowBox && navTabHollowBox.classList.contains('active');
       if (isConverterActive) {
         switchMainTab('converter');
+      } else if (isRealPreviewActive) {
+        switchMainTab('realpreview');
       } else if (isHollowBoxActive) {
         switchMainTab('hollowbox');
       } else {
@@ -6842,14 +8266,22 @@
         isMobileLayout = true;
         moveToMobile();
         requestAnimationFrame(() => {
-          renderPreview();
+          if (typeof setStudioPreviewMode === 'function') {
+        setStudioPreviewMode(state.studioPreviewMode || 'canvas');
+      } else {
+        renderPreview();
+      }
           if (typeof redrawHollowBoxPreview === 'function') redrawHollowBoxPreview();
         });
       } else if (!shouldBeMobile && isMobileLayout) {
         isMobileLayout = false;
         moveToDesktop();
         requestAnimationFrame(() => {
-          renderPreview();
+          if (typeof setStudioPreviewMode === 'function') {
+        setStudioPreviewMode(state.studioPreviewMode || 'canvas');
+      } else {
+        renderPreview();
+      }
           if (typeof redrawHollowBoxPreview === 'function') redrawHollowBoxPreview();
         });
       }
@@ -7151,8 +8583,18 @@
           if (mobileInspectorToggleBtn) mobileInspectorToggleBtn.classList.remove('active');
           if (navTabConverter) navTabConverter.classList.add('active');
           if (navTabStudio) navTabStudio.classList.remove('active');
+          if (navTabRealPreview) navTabRealPreview.classList.remove('active');
           if (navTabHollowBox) navTabHollowBox.classList.remove('active');
           ensureConverterSampleLoaded();
+        } else if (targetId === 'mobileTabRealPreview') {
+          activeMainWorkspace = 'realpreview';
+          if (mobileFloatingInspector) mobileFloatingInspector.classList.add('hidden-for-tab');
+          if (mobileInspectorToggleBtn) mobileInspectorToggleBtn.classList.remove('active');
+          if (navTabRealPreview) navTabRealPreview.classList.add('active');
+          if (navTabStudio) navTabStudio.classList.remove('active');
+          if (navTabConverter) navTabConverter.classList.remove('active');
+          if (navTabHollowBox) navTabHollowBox.classList.remove('active');
+          if (typeof initRealPreview === 'function') initRealPreview();
         } else if (targetId === 'mobileTabHollowBox') {
           activeMainWorkspace = 'hollowbox';
           if (mobileFloatingInspector) mobileFloatingInspector.classList.add('hidden-for-tab');
@@ -7160,6 +8602,7 @@
           if (navTabHollowBox) navTabHollowBox.classList.add('active');
           if (navTabStudio) navTabStudio.classList.remove('active');
           if (navTabConverter) navTabConverter.classList.remove('active');
+          if (navTabRealPreview) navTabRealPreview.classList.remove('active');
           if (typeof initHollowBoxMaker === 'function') initHollowBoxMaker();
           requestAnimationFrame(() => {
             if (typeof redrawHollowBoxPreview === 'function') redrawHollowBoxPreview();
@@ -7174,6 +8617,7 @@
           }
           if (navTabStudio) navTabStudio.classList.add('active');
           if (navTabConverter) navTabConverter.classList.remove('active');
+          if (navTabRealPreview) navTabRealPreview.classList.remove('active');
           if (navTabHollowBox) navTabHollowBox.classList.remove('active');
           requestAnimationFrame(() => renderPreview());
         }
@@ -7186,7 +8630,11 @@
     if (typeof ResizeObserver !== 'undefined') {
       const stageObserver = new ResizeObserver(() => {
         if (canvasContainer && canvasContainer.clientWidth > 0) {
-          renderPreview();
+          if (typeof setStudioPreviewMode === 'function') {
+        setStudioPreviewMode(state.studioPreviewMode || 'canvas');
+      } else {
+        renderPreview();
+      }
         }
         if (hbCanvasWrap && hbCanvasWrap.clientWidth > 0 && typeof redrawHollowBoxPreview === 'function') {
           redrawHollowBoxPreview();
@@ -7202,7 +8650,11 @@
     });
 
     window.addEventListener('flippy:themechange', () => {
-      renderPreview();
+      if (typeof setStudioPreviewMode === 'function') {
+        setStudioPreviewMode(state.studioPreviewMode || 'canvas');
+      } else {
+        renderPreview();
+      }
       if (typeof redrawHollowBoxPreview === 'function') redrawHollowBoxPreview();
     });
 
