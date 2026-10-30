@@ -282,14 +282,14 @@
 
             <!-- Wipe Effect Configuration -->
             <div id="wipeOptions" class="reveal-box" style="display: none;">
-              <div class="control-group" style="margin-bottom: 0;">
+              <div class="control-group recommended-setting" style="margin-bottom: 0;">
                 <label>
                   Auto-Center Slice Pivot
-                  <span class="badge" id="wipeAutoFixBadge">ALL ANGLES</span>
+                  <span class="badge recommended-badge" id="wipeAutoFixBadge">RECOMMENDED: TURN ON</span>
                 </label>
                 <div class="toggle-group" id="wipeAutoFixPivotToggle">
-                  <button class="toggle-btn active" data-value="on" type="button">On</button>
-                  <button class="toggle-btn" data-value="off" type="button">Off</button>
+                  <button class="toggle-btn" data-value="on" type="button">On</button>
+                  <button class="toggle-btn active" data-value="off" type="button">Off</button>
                 </div>
                 <div class="control-hint">Centers the flip pivot on each slice across vertical, horizontal, and diagonal cuts.</div>
               </div>
@@ -667,7 +667,7 @@
               </div>
 
               <div class="section-block stage">
-                <div class="section-header"><span class="stage-num">S3</span>Box Depth &amp; Scale</div>
+                <div class="section-header"><span class="stage-num">S3</span>Box Depth, Scale &amp; Shading</div>
                 <div class="readonly-row">
                   <div class="readonly-field">
                     <span class="field-label">Depth</span>
@@ -678,7 +678,14 @@
                     <span class="field-value">3.51</span>
                   </div>
                 </div>
-                <div class="control-hint">Standard Alight Motion box parameters.</div>
+                <div class="control-group" style="margin-top: 10px; margin-bottom: 0;">
+                  <label>Light Source</label>
+                  <div class="toggle-group" id="boxShadingToggle">
+                    <button class="toggle-btn active" data-value="0" type="button">Flat</button>
+                    <button class="toggle-btn" data-value="1" type="button">Point Light</button>
+                  </div>
+                </div>
+                <div class="control-hint">Standard Alight Motion 3D box shading (Flat = 0, Point Light = 1).</div>
               </div>
             </div>
 
@@ -876,14 +883,14 @@
               </div>
             </div>
 
-            <div class="control-group" id="autoFixPivotControlGroup">
+            <div class="control-group recommended-setting" id="autoFixPivotControlGroup">
               <label>
                 Auto-Center Slice Pivot
-                <span class="badge" id="autoFixPivotBadge">ALL ANGLES</span>
+                <span class="badge recommended-badge" id="autoFixPivotBadge">RECOMMENDED: TURN ON</span>
               </label>
               <div class="toggle-group" id="autoFixPivotToggle">
-                <button class="toggle-btn active" data-value="on" type="button">On</button>
-                <button class="toggle-btn" data-value="off" type="button">Off</button>
+                <button class="toggle-btn" data-value="on" type="button">On</button>
+                <button class="toggle-btn active" data-value="off" type="button">Off</button>
               </div>
               <div class="control-hint">Rotates each wipe slice around its own center instead of the canvas origin.</div>
             </div>

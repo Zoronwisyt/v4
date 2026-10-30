@@ -24,7 +24,7 @@
     solidHeight: 1350,
     splitDirection: 'horizontal',
     wipeMethod: 'mask', // 'wipe' or 'mask' (Masking Mode enabled)
-    autoFixPivot: true, // Auto-fix flip pivot per slice in Wipe mode (vertical split, axis 0)
+    autoFixPivot: false, // Recommended for tighter diagonal slice alignment; users can enable it per project
     maskEmbedScene: true, // Group in <embedScene> matching Project Name 294
     videoLayer: false,
     videoUri: 'am-internal:///4BA32805414BE561BE374FA7D5B88C4BF8261057.MP4',
@@ -135,6 +135,7 @@
       rotateEndZ: 0,
       depth: 0.01,
       scale: 3.51,
+      shadingType: 0, // 0 = Flat, 1 = Point Light (Alight Motion 3D Box)
       orientEasing: '0.25, 0.10, 0.25, 1.00',
       rotateEasing: '0.25, 0.10, 0.25, 1.00',
     },
@@ -288,6 +289,7 @@
   const boxRotateEndZInput = $('#boxRotateEndZ');
   const boxOrientEasingBtn = $('#boxOrientEasingBtn');
   const boxRotateEasingBtn = $('#boxRotateEasingBtn');
+  const boxShadingToggle = $('#boxShadingToggle');
 
   // Hollow Box Controls (Masking Mode Animation)
   const hollowBoxEffectControls = $('#hollowBoxEffectControls');
@@ -632,6 +634,14 @@
           const hbStart = hbAllStart;
           const hbEnd = hbFirstEnd + (hbLastEnd - hbFirstEnd) * staggerRatio;
 
+          let effectiveFlipAxis = subSec.axis;
+          if (effectiveFlipAxis === undefined || (effectiveFlipAxis === 0 && !subSec.axisCustom)) {
+            if (subDir === 'diagonal') effectiveFlipAxis = 45;
+            else if (subDir === 'diagonal-desc') effectiveFlipAxis = 135;
+            else if (subDir === 'vertical') effectiveFlipAxis = 90;
+            else effectiveFlipAxis = 0;
+          }
+
           const layerProps = {
             index: globalLayerIndex + 1,
             flipStartT: b1,
@@ -644,7 +654,7 @@
             hbEndT: hbEnd,
             flipStartAngle: subSec.startAngle,
             flipEndAngle: subSec.endAngle,
-            flipAxis: subSec.axis,
+            flipAxis: effectiveFlipAxis,
             cubeXStart: subSec.cubeXStart || 0,
             cubeXEnd: subSec.cubeXEnd || 0,
             cubeYStart: subSec.cubeYStart || 0,
@@ -715,8 +725,14 @@
             const projD = rectWidth * cosA + rectHeight * sinA || 1;
             const wipeOverscan = isBoxV2Mode ? 0 : (WIPE_SEAM_OVERSCAN_PX / projD);
 
-            const sliceWipeStart = Math.max(0, normStart - wipeOverscan);
-            const sliceWipeEnd = Math.min(1, normEnd + wipeOverscan);
+            let sliceWipeStart = Math.max(0, normStart - wipeOverscan);
+            let sliceWipeEnd = Math.min(1, normEnd + wipeOverscan);
+            // For the 45° diagonal option, extend the two corner wipes beyond
+            // the normalized range so the top-left and bottom-right slices fill.
+            if (subDir === 'diagonal' && Math.abs(effectiveWipeAngle - 45) < 0.000001) {
+              if (normStart <= 0.000001) sliceWipeStart = -0.5;
+              if (normEnd >= 0.999999) sliceWipeEnd = 1.5;
+            }
 
             const isDiag = (effectiveWipeAngle % 90 !== 0);
 
@@ -1004,13 +1020,15 @@
           const wxEnd = layer.wipeXEnd !== undefined ? layer.wipeXEnd : 1;
           const wyStart = layer.wipeYStart !== undefined ? layer.wipeYStart : 0;
           const wyEnd = layer.wipeYEnd !== undefined ? layer.wipeYEnd : 1;
-          const boundX1 = solidLeft + wxStart * solidW;
-          const boundX2 = solidLeft + wxEnd * solidW;
-          const boundY1 = solidTop + wyStart * solidH;
-          const boundY2 = solidTop + wyEnd * solidH;
-          ctx.beginPath();
-          ctx.rect(boundX1, boundY1, Math.max(0.1, boundX2 - boundX1), Math.max(0.1, boundY2 - boundY1));
-          ctx.clip();
+          if (wxStart > 0.000001 || wxEnd < 0.999999 || wyStart > 0.000001 || wyEnd < 0.999999) {
+            const boundX1 = solidLeft + wxStart * solidW;
+            const boundX2 = solidLeft + wxEnd * solidW;
+            const boundY1 = solidTop + wyStart * solidH;
+            const boundY2 = solidTop + wyEnd * solidH;
+            ctx.beginPath();
+            ctx.rect(boundX1, boundY1, Math.max(0.1, boundX2 - boundX1), Math.max(0.1, boundY2 - boundY1));
+            ctx.clip();
+          }
         }
       }
 
@@ -1038,11 +1056,18 @@
           const m11 = sz * sy * sx + cz * cx;
           ctx.transform(m00, m10, m01, m11, 0, 0);
         } else if (state.animType === 'flip') {
+          // In Alight Motion, standard shapes have a 200x200 (-100 to +100) base square geometry.
+          // The flip3 effect executes in local square coordinates before the non-uniform transform scale.
+          // Rotating around flipAxis means points on the axis stay fixed (scale 1.0)
+          // while points perpendicular to the axis rotate in/out of the plane (scale cos(flipRad)).
+          const rAspect = layerH / (layerW || 1);
+          ctx.scale(1, 1 / rAspect);
           const axisRad = (layer.flipAxis * Math.PI) / 180;
           ctx.rotate(axisRad);
           const flipRad = (flipAngle * Math.PI) / 180;
-          ctx.scale(Math.cos(flipRad), 1);
+          ctx.scale(1, Math.cos(flipRad));
           ctx.rotate(-axisRad);
+          ctx.scale(1, rAspect);
         } else if (state.animType === 'cube') {
           // True 3D rotation projected orthographically onto the canvas:
           //   X = tilt up/down (foreshortens vertically)
@@ -1165,19 +1190,23 @@
           const thetaRad = (angle * Math.PI) / 180;
           const startVal = layer.wipeStart !== undefined ? layer.wipeStart : 0;
           const endVal = layer.wipeEnd !== undefined ? layer.wipeEnd : 1;
-          const cosA = Math.abs(Math.cos(thetaRad));
-          const sinA = Math.abs(Math.sin(thetaRad));
-          const projD = solidW * cosA + solidH * sinA || 1;
-          const d1 = (startVal - 0.5) * projD;
-          const d2 = (endVal - 0.5) * projD;
-          const R = Math.hypot(solidW, solidH) * 1.5;
+          const rAspect = solidH / (solidW || 1);
+
+          // In Alight Motion, wipe2 executes in local square space (200x200) before non-uniform aspect scaling.
+          // Applying the wipe clip in square space ensures the cut line and flip axis stay perfectly aligned.
+          const projD_sq = solidW * Math.SQRT2;
+          const d1 = (startVal - 0.5) * projD_sq;
+          const d2 = (endVal - 0.5) * projD_sq;
+          const R = solidW * 2;
 
           ctx.translate(cx, cy);
+          ctx.scale(1, 1 / rAspect);
           ctx.rotate(thetaRad);
           ctx.beginPath();
           ctx.rect(d1, -R, Math.max(0.1, d2 - d1), R * 2);
           ctx.clip();
           ctx.rotate(-thetaRad);
+          ctx.scale(1, rAspect);
           ctx.translate(-cx, -cy);
 
           // If inside a section, clip to section bounds as well
@@ -1234,12 +1263,11 @@
           const thetaRad = (angle * Math.PI) / 180;
           const startVal = layer.wipeStart !== undefined ? layer.wipeStart : 0;
           const endVal = layer.wipeEnd !== undefined ? layer.wipeEnd : 1;
-          const cosA = Math.abs(Math.cos(thetaRad));
-          const sinA = Math.abs(Math.sin(thetaRad));
-          const projD = solidW * cosA + solidH * sinA || 1;
-          const midD = ((startVal + endVal) / 2 - 0.5) * projD;
+          const rAspect = solidH / (solidW || 1);
+          const projD_sq = solidW * Math.SQRT2;
+          const midD = ((startVal + endVal) / 2 - 0.5) * projD_sq;
           labelX = cx + midD * Math.cos(thetaRad);
-          labelY = cy + midD * Math.sin(thetaRad);
+          labelY = cy + midD * Math.sin(thetaRad) * rAspect;
         }
 
         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
@@ -1971,6 +1999,7 @@
       
       block.querySelector('.sub-axis').addEventListener('input', (e) => {
         subSec.axis = parseFloat(e.target.value) || 0;
+        subSec.axisCustom = true;
         fullUpdate();
       });
       
@@ -2210,6 +2239,7 @@
       html += `<div class="formula-line"><span class="formula-label">Total Slices</span><span class="formula-expr">${n} Layers</span></div>`;
       html += `<div class="formula-line"><span class="formula-label">Project Resolution</span><span class="formula-expr">${state.projectWidth} × ${state.projectHeight} px</span></div>`;
       html += `<div class="formula-line"><span class="formula-label">Solid Geometry</span><span class="formula-expr">${W.toFixed(0)} × ${H.toFixed(0)} px (Centered at ${state.projectWidth / 2}, ${state.projectHeight / 2})</span></div>`;
+      html += `<div class="formula-line"><span class="formula-label">AM Shape Scale</span><span class="formula-expr" style="color:var(--cyan); font-weight:700;">scaleX = ${(W / 200).toFixed(6)} (W / 200), &nbsp; scaleY = ${(H / 200).toFixed(6)} (H / 200) · Native 200×200 Base</span></div>`;
       html += `<div class="formula-line"><span class="formula-label">Wipe Angle (θ)</span><span class="formula-expr" style="color:var(--cyan); font-weight:700;">${thetaDeg}° ${isDiag ? '(DIAGONAL)' : (thetaDeg === 90 ? '(HORIZONTAL)' : '(VERTICAL)')}</span></div>`;
       html += `<div class="formula-line"><span class="formula-label">Seam Overscan (δ)</span><span class="formula-expr">${WIPE_SEAM_OVERSCAN_PX} px (Normalized δ = ${(deltaOverscan * 100).toFixed(4)}%)</span></div>`;
 
@@ -2441,7 +2471,9 @@
       } else if (state.animType === 'flip') {
         effXml += `${indent}<effect id="com.alightcreative.effects.flip3" locallyApplied="true">\n`;
         effXml += `${indent}${t}<property name="axis" type="float" value="${layer.flipAxis.toFixed(6)}"/>\n`;
-        effXml += `${indent}${t}<property name="pivot" type="vec2" value="${layer.pivotX.toFixed(6)},${layer.pivotY.toFixed(6)}"/>\n`;
+        if (Math.abs(layer.pivotX) > 0.000001 || Math.abs(layer.pivotY) > 0.000001) {
+          effXml += `${indent}${t}<property name="pivot" type="vec2" value="${layer.pivotX.toFixed(6)},${layer.pivotY.toFixed(6)}"/>\n`;
+        }
         effXml += `${indent}${t}<property name="angle" type="float">\n`;
         effXml += `${indent}${t}${t}<kf t="${normStart.toFixed(6)}" v="${layer.flipStartAngle.toFixed(6)}" />\n`;
         effXml += `${indent}${t}${t}<kf t="${normEnd.toFixed(6)}" v="${layer.flipEndAngle.toFixed(6)}"${easingStr} />\n`;
@@ -2514,7 +2546,8 @@
         effXml += `${indent}${t}</property>\n`;
 
         effXml += `${indent}${t}<property name="height" type="float" value="1.0"/>\n`;
-        effXml += `${indent}${t}<property name="shadingType" type="int" value="1"/>\n`;
+        const boxShading = (state.box && state.box.shadingType !== undefined) ? state.box.shadingType : 0;
+        effXml += `${indent}${t}<property name="shadingType" type="int" value="${boxShading}"/>\n`;
         effXml += `${indent}</effect>\n`;
       } else if (state.animType === 'hollowbox') {
         if (state.wipeMethod !== 'mask') {
@@ -2653,11 +2686,27 @@
         xml += `${t}</embedScene>\n`;
 
       } else {
-        // Wipe / BOX V2 Method: Shape with wipe2 effect (full 1080x1350 solid dimensions; transform scale stays 1.0 so rectangle is never enlarged to 2592x3240)
+        // Wipe / BOX V2 Method: Shape with wipe2 effect
         let finalLocX = layer.locX;
         let finalLocY = layer.locY;
+
+        const isBoxV2 = state.wipeMethod === 'boxv2' || state.animType === 'boxv2';
+        const isCube = state.animType === 'cube';
+
         let finalScaleX = 1.0;
         let finalScaleY = 1.0;
+
+        if (!isBoxV2 && !isCube) {
+          // Standard Alight Motion rectangle behavior:
+          // In Alight Motion, default s=".rect" geometry base is 200x200 (-100 to +100 vector units).
+          // Sizing via <scale> (width/200, height/200) rather than <property name="size">
+          // ensures 3D effects like flip3 operate in isotropic square object space.
+          // For 600x750: scaleX = 3.00, scaleY = 3.75. For 1080x1350: scaleX = 5.40, scaleY = 6.75.
+          const targetW = layer.width || state.solidWidth;
+          const targetH = layer.height || state.solidHeight;
+          finalScaleX = targetW / 200.0;
+          finalScaleY = targetH / 200.0;
+        }
 
         const fillAttrs = useVideo
           ? `fillType="media" fillVideo="${videoUri}" mediaFillMode="fill"`
@@ -2692,10 +2741,10 @@
           const diagAngle = layer.wipeAngle !== undefined ? layer.wipeAngle : 45;
           const dStart = layer.wipeStart !== undefined ? layer.wipeStart : 0;
           const dEnd = layer.wipeEnd !== undefined ? layer.wipeEnd : 1;
-          if (dStart > 0.000001 || dEnd < 0.999999) {
+          if (Math.abs(dStart) > 0.000001 || Math.abs(dEnd - 1) > 0.000001) {
             xml += `${t}${t}<effect id="com.alightcreative.effects.wipe2" locallyApplied="true">\n`;
-            if (dEnd < 0.999999) xml += `${t}${t}${t}<property name="end" type="float" value="${dEnd.toFixed(6)}"/>\n`;
-            if (dStart > 0.000001) xml += `${t}${t}${t}<property name="start" type="float" value="${dStart.toFixed(6)}"/>\n`;
+            if (Math.abs(dEnd - 1) > 0.000001) xml += `${t}${t}${t}<property name="end" type="float" value="${dEnd.toFixed(6)}"/>\n`;
+            if (Math.abs(dStart) > 0.000001) xml += `${t}${t}${t}<property name="start" type="float" value="${dStart.toFixed(6)}"/>\n`;
             xml += `${t}${t}${t}<property name="angle" type="float" value="${diagAngle.toFixed(6)}"/>\n`;
             if (state.wipeSoftness > 0) {
               xml += `${t}${t}${t}<property name="feather" type="float" value="${(state.wipeSoftness / 100).toFixed(6)}"/>\n`;
@@ -2751,10 +2800,8 @@
 
         xml += generateEffectsXml(layer, `${t}${t}`);
 
-        if (state.animType === 'cube' || state.animType === 'boxv2' || state.wipeMethod === 'boxv2') {
+        if (isBoxV2 || isCube) {
           xml += `${t}${t}<property name="size" type="vec2" value="${(state.projectWidth / 2).toFixed(6)},${(state.projectHeight / 2).toFixed(6)}"/>\n`;
-        } else {
-          xml += `${t}${t}<property name="size" type="vec2" value="${(layer.width / 2).toFixed(6)},${(layer.height / 2).toFixed(6)}"/>\n`;
         }
 
         xml += `${t}</shape>\n`;
@@ -3284,6 +3331,23 @@
     });
   }
 
+  // Sync flip axis default to split direction when axis is not customized
+  function syncFlipAxisToDirection(dir) {
+    let axis = 0;
+    if (dir === 'diagonal') axis = 45;
+    else if (dir === 'diagonal-desc') axis = 135;
+    else if (dir === 'horizontal') axis = 0;
+    else if (dir === 'vertical') axis = 90;
+    state.sections.forEach(sec => {
+      if (sec.subSections) {
+        sec.subSections.forEach(sub => {
+          if (!sub.axisCustom) sub.axis = axis;
+        });
+      }
+    });
+    if (typeof renderSectionsUI === 'function') renderSectionsUI();
+  }
+
   // Split direction
   splitDirectionGroup.addEventListener('click', (e) => {
     const btn = e.target.closest('.toggle-btn');
@@ -3300,6 +3364,7 @@
     } else if (state.splitDirection === 'diagonal-desc') {
       state.wipeAngle = 135;
     }
+    syncFlipAxisToDirection(state.splitDirection);
     if (wipeAngleInput) wipeAngleInput.value = state.wipeAngle;
     if (wipeAngleValue) wipeAngleValue.textContent = state.wipeAngle + '°';
     if (typeof syncWipeAnglePresetsUI === 'function') syncWipeAnglePresetsUI();
@@ -3424,6 +3489,7 @@
           b.classList.toggle('active', b.dataset.value === targetSplit);
         });
         state.splitDirection = targetSplit;
+        syncFlipAxisToDirection(targetSplit);
       }
       syncWipeAnglePresetsUI();
       fullUpdate();
@@ -3450,6 +3516,7 @@
           b.classList.toggle('active', b.dataset.value === targetSplit);
         });
         state.splitDirection = targetSplit;
+        syncFlipAxisToDirection(targetSplit);
       }
       syncWipeAnglePresetsUI();
       fullUpdate();
@@ -4009,6 +4076,11 @@
     boxRotateEndXInput.value = state.box.rotateEndX;
     boxRotateEndYInput.value = state.box.rotateEndY;
     boxRotateEndZInput.value = state.box.rotateEndZ;
+    if (boxShadingToggle) {
+      boxShadingToggle.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.value) === (state.box.shadingType !== undefined ? state.box.shadingType : 0));
+      });
+    }
 
     // Hollow Box controls
     if (state.hollowbox) {
@@ -4104,6 +4176,17 @@
     boxRotateEasingBtn.addEventListener('click', () => {
       openBezierModal('box-rotate', state.box.rotateEasing, true);
     });
+
+    if (boxShadingToggle) {
+      boxShadingToggle.addEventListener('click', (e) => {
+        const btn = e.target.closest('.toggle-btn');
+        if (!btn) return;
+        boxShadingToggle.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.box.shadingType = parseInt(btn.dataset.value) || 0;
+        fullUpdate();
+      });
+    }
   }
 
   // Hollow Box Control Handlers

@@ -964,6 +964,19 @@ main#app-main {
   background: rgba(var(--brass-rgb), 0.1);
 }
 
+.badge.recommended-badge {
+  color: #53d18b;
+  border-color: rgba(63, 166, 118, 0.48);
+  background: rgba(63, 166, 118, 0.14);
+}
+
+.recommended-setting {
+  padding: 10px;
+  border: 1px solid rgba(63, 166, 118, 0.38);
+  border-radius: var(--r-md);
+  background: rgba(63, 166, 118, 0.07);
+}
+
 /* Segmented Toggle Groups */
 .toggle-group {
   display: flex;
