@@ -32,26 +32,16 @@ const MIME_TYPES = {
 };
 
 const BLOCKED_CHANNELS = [
-  'crunchyroll', 'crunchyroll collection', 'crunchyroll dubs',
-  'netflix', 'netflix anime', 'toei animation', 'muse asia',
-  'ani-one asia', 'aniplex', 'vizmedia', 'viz media', 'funimation',
-  'kadokawa', 'kadokawaanime', 'mappa', 'mappa channel', 'gundaminfo',
-  'bandai namco', 'tms entertainment', 'pony canyon', 'toho animation',
-  'shonen jump', 'sony pictures', 'sony pictures entertainment',
-  'warner bros. pictures', 'warner bros', 'universal pictures',
-  'paramount pictures', 'walt disney studios', 'marvel entertainment',
-  '20th century studios', 'lionsgate movies', 'mgm', 'a24',
-  'youtube movies', 'prime video', 'hulu', 'peacock', 'hbo', 'max'
+  'youtube movies',
+  'youtube movies & tv',
+  'youtube primetime',
+  'google play movies & tv',
+  'movies & shows'
 ];
 
 const BLOCKED_TITLE_PATTERNS = [
-  /\bfull\s+movie\b/i,
-  /\bfull\s+episode\b/i,
-  /\b(?:episode|ep\.?)\s*\d+\s*(?:\||-|\[|\(|full|eng\s*sub|sub|dub)/i,
-  /\bs\d{1,2}\s*e\d{1,3}\b/i,
-  /\b(?:eng(?:lish)?\s+sub(?:s|titled)?|multi\s*sub)\b.*\b(?:episode|ep\.?\s*\d+|anime)\b/i,
-  /\b(?:anime\s+full\s+episode|official\s+episode)\b/i,
-  /\b(?:complete\s+feature\s+film|official\s+full\s+movie)\b/i
+  /\b(?:buy\s+or\s+rent|rent\s+or\s+buy)\b/i,
+  /\b(?:requires\s+purchase|purchase\s+required|paid\s+rental)\b/i
 ];
 
 const ALLOWED_FORMATS = new Set([
@@ -84,15 +74,18 @@ async function verifyYoutubeCompliance(ytUrl) {
       if (author === ch || author.includes(ch)) {
         return {
           allowed: false,
-          reason: `Restricted Channel: "${meta.author_name}" is a protected Movie / Anime distributor.`
+          reason: `Blocked: "${meta.author_name}" is a paid YouTube storefront that requires buying or renting this video.`
         };
       }
     }
     for (const pat of BLOCKED_TITLE_PATTERNS) {
       if (pat.test(title)) {
+        if (/trailer|teaser|preview|clip/i.test(title)) {
+          continue;
+        }
         return {
           allowed: false,
-          reason: 'Restricted Content: Title matches protected Full Movie or Anime Episode broadcast pattern.'
+          reason: 'Blocked: This video is marked as Buy or Rent and requires purchase on YouTube.'
         };
       }
     }
@@ -102,32 +95,90 @@ async function verifyYoutubeCompliance(ytUrl) {
   }
 }
 
-async function fetchUpstreamJson(pathname, queryObj) {
-  const hosts = ['https://p.savenow.to', 'https://p.lbserver.xyz'];
-  const qs = new URLSearchParams(queryObj).toString();
-  let lastErr = null;
+const UPSTREAM_HOSTS = ['https://p.savenow.to', 'https://p.lbserver.xyz'];
+let preferredHost = null; // last host that answered fastest
 
-  for (const host of hosts) {
-    try {
-      const targetUrl = `${host}${pathname}?${qs}`;
-      const r = await fetch(targetUrl, {
-        method: 'GET',
-        headers: {
-          'Origin': host,
-          'Referer': `${host}/api/button/`,
-          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-          'Accept': 'application/json'
-        }
-      });
-      if (r.ok) {
-        return await r.json();
+// Race all upstream hosts in parallel; first successful JSON wins
+async function fetchUpstreamJson(pathname, queryObj) {
+  const qs = new URLSearchParams(queryObj).toString();
+  const hosts = preferredHost ? [preferredHost, ...UPSTREAM_HOSTS.filter(h => h !== preferredHost)] : UPSTREAM_HOSTS;
+  const controllers = hosts.map(() => new AbortController());
+
+  const attempts = hosts.map((host, i) => (async () => {
+    const r = await fetch(`${host}${pathname}?${qs}`, {
+      method: 'GET',
+      signal: controllers[i].signal,
+      headers: {
+        'Origin': host,
+        'Referer': `${host}/api/button/`,
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+        'Accept': 'application/json'
       }
-      lastErr = new Error(`Upstream HTTP ${r.status}`);
-    } catch (err) {
-      lastErr = err;
-    }
+    });
+    if (!r.ok) throw new Error(`Upstream HTTP ${r.status}`);
+    const json = await r.json();
+    return { host, json, i };
+  })());
+
+  try {
+    const { host, json, i } = await Promise.any(attempts);
+    preferredHost = host;
+    controllers.forEach((c, j) => { if (j !== i) c.abort(); });
+    return json;
+  } catch (agg) {
+    const first = agg && agg.errors && agg.errors[0];
+    throw first || new Error('All upstream MP4 muxer nodes failed');
   }
-  throw lastErr || new Error('All upstream MP4 muxer nodes failed');
+}
+
+// Detect FFmpeg once at startup for exact bitrate re-encoding
+const { spawn, spawnSync } = require('child_process');
+const STANDALONE_FFMPEG = 'C:\\Users\\jeduc\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\imageio_ffmpeg\\binaries\\ffmpeg-win-x86_64-v7.1.exe';
+const FFMPEG_BIN = fs.existsSync(STANDALONE_FFMPEG) ? STANDALONE_FFMPEG : (process.env.FFMPEG_PATH || 'ffmpeg');
+let HAS_FFMPEG = false;
+try {
+  HAS_FFMPEG = spawnSync(FFMPEG_BIN, ['-version'], { stdio: 'ignore', timeout: 4000 }).status === 0;
+} catch (_) { HAS_FFMPEG = false; }
+
+function handleTranscode(parsed, req, res) {
+  const src = (parsed.searchParams.get('src') || '').trim();
+  const ext = (parsed.searchParams.get('ext') || 'mp4').toLowerCase();
+  const vb = Math.max(0, Math.min(80000, parseInt(parsed.searchParams.get('vb') || '0', 10) || 0)); // kbps
+  const ab = Math.max(0, Math.min(320, parseInt(parsed.searchParams.get('ab') || '0', 10) || 0));    // kbps
+
+  if (!HAS_FFMPEG) return sendJson(res, 501, { success: false, error: 'FFmpeg not installed on server' });
+  let srcUrl;
+  try { srcUrl = new URL(src); } catch (_) { return sendJson(res, 400, { success: false, error: 'Bad src' }); }
+  if (srcUrl.protocol !== 'https:' || /^(localhost|127\.|10\.|192\.168\.|169\.254\.)/.test(srcUrl.hostname)) {
+    return sendJson(res, 400, { success: false, error: 'src must be a public https URL' });
+  }
+
+  const args = ['-hide_banner', '-loglevel', 'error', '-i', srcUrl.href];
+  let mime = 'video/mp4';
+  if (ext === 'mp3') {
+    args.push('-vn', '-c:a', 'libmp3lame', '-b:a', `${ab || 320}k`, '-f', 'mp3');
+    mime = 'audio/mpeg';
+  } else if (ext === 'm4a') {
+    args.push('-vn', '-c:a', 'aac', '-b:a', `${ab || 256}k`, '-movflags', 'frag_keyframe+empty_moov', '-f', 'mp4');
+    mime = 'audio/mp4';
+  } else {
+    if (vb > 0) args.push('-c:v', 'libx264', '-preset', 'veryfast', '-b:v', `${vb}k`, '-maxrate', `${vb}k`, '-bufsize', `${vb * 2}k`, '-pix_fmt', 'yuv420p');
+    else args.push('-c:v', 'copy');
+    if (ab > 0) args.push('-c:a', 'aac', '-b:a', `${ab}k`);
+    else args.push('-c:a', 'copy');
+    args.push('-movflags', 'frag_keyframe+empty_moov', '-f', 'mp4');
+  }
+  args.push('pipe:1');
+
+  const ff = spawn(FFMPEG_BIN, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  setCors(res);
+  res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'no-store' });
+  ff.stdout.pipe(res);
+  ff.stderr.on('data', d => process.stderr.write('[ffmpeg] ' + d));
+  const kill = () => { try { ff.kill('SIGKILL'); } catch (_) {} };
+  req.on('close', kill);
+  ff.on('error', () => { if (!res.writableEnded) res.end(); });
+  ff.on('close', () => { if (!res.writableEnded) res.end(); });
 }
 
 const server = http.createServer(async (req, res) => {
@@ -142,7 +193,11 @@ const server = http.createServer(async (req, res) => {
 
   // Health probe for client auto-discovery
   if (parsed.pathname === '/__flippy_yt_ping') {
-    return sendJson(res, 200, { ok: true, engine: 'flippy-v4-mp4-muxer' });
+    return sendJson(res, 200, { ok: true, engine: 'flippy-v4-mp4-muxer', ffmpeg: HAS_FFMPEG });
+  }
+
+  if (parsed.pathname === '/__flippy_yt_transcode') {
+    return handleTranscode(parsed, req, res);
   }
 
   // Step 1: Initiate real MP4 / Audio conversion job

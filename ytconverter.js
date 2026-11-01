@@ -1,67 +1,25 @@
 /**
  * YT Converter — Direct .MP4 Video Downloader (1080p / 4K 60fps) + iPhone "Save to Photos" Engine
- * Enforces Content & Channel Legal Compliance Gate (Blocks Licensed Movies & Anime Episodes)
+ * Allows all free YouTube streams (including Anime Twixtors, Clips & Episodes) · Blocks only Paid / Buy-or-Rent videos
  */
 (function(window, document) {
   'use strict';
 
   // =========================================================================
-  // 1. LEGAL COMPLIANCE & COPYRIGHT PROTECTION REGISTRY
+  // 1. PAID / PURCHASE-REQUIRED STREAM DETECTION REGISTRY
   // =========================================================================
   var BLOCKED_CHANNELS = [
-    'crunchyroll',
-    'crunchyroll collection',
-    'crunchyroll dubs',
-    'netflix',
-    'netflix anime',
-    'toei animation',
-    'muse asia',
-    'ani-one asia',
-    'aniplex',
-    'vizmedia',
-    'viz media',
-    'funimation',
-    'kadokawa',
-    'kadokawaanime',
-    'mappa',
-    'mappa channel',
-    'gundaminfo',
-    'bandai namco',
-    'tms entertainment',
-    'pony canyon',
-    'king amusement creative',
-    'toho animation',
-    'shonen jump',
-    'jump comics',
-    'sony pictures',
-    'sony pictures entertainment',
-    'warner bros. pictures',
-    'warner bros',
-    'universal pictures',
-    'paramount pictures',
-    'walt disney studios',
-    'marvel entertainment',
-    '20th century studios',
-    'lionsgate movies',
-    'mgm',
-    'a24',
     'youtube movies',
-    'prime video',
-    'hulu',
-    'peacock',
-    'hbo',
-    'max'
+    'youtube movies & tv',
+    'youtube primetime',
+    'google play movies & tv',
+    'movies & shows'
   ];
 
-  // Regex patterns for full movies and anime episode uploads
+  // Regex patterns for videos that explicitly require purchase or rental
   var BLOCKED_TITLE_PATTERNS = [
-    /\bfull\s+movie\b/i,
-    /\bfull\s+episode\b/i,
-    /\b(?:episode|ep\.?)\s*\d+\s*(?:\||-|\[|\(|full|eng\s*sub|sub|dub)/i,
-    /\bs\d{1,2}\s*e\d{1,3}\b/i,
-    /\b(?:eng(?:lish)?\s+sub(?:s|titled)?|multi\s*sub)\b.*\b(?:episode|ep\.?\s*\d+|anime)\b/i,
-    /\b(?:anime\s+full\s+episode|official\s+episode)\b/i,
-    /\b(?:complete\s+feature\s+film|official\s+full\s+movie)\b/i
+    /\b(?:buy\s+or\s+rent|rent\s+or\s+buy)\b/i,
+    /\b(?:requires\s+purchase|purchase\s+required|paid\s+rental)\b/i
   ];
 
   // Device & Camera Roll Presets
@@ -127,8 +85,11 @@
       trimEnabled: false,
       trimStart: '00:00:00',
       trimEnd: '00:00:30',
+      videoBitrateMbps: 0, // 0 = Auto (source)
+      audioBitrateKbps: 0, // 0 = Auto (source)
       legalAttested: true
     },
+    backendCaps: { ffmpeg: false },
     readyMedia: {
       blobUrl: null,
       directUrl: null,
@@ -177,15 +138,24 @@
     return null;
   }
 
-  // Evaluate Legal & Channel Compliance
+  // Evaluate Paid / Purchase-Required Gate (All free YouTube videos & anime twixtors allowed)
   function evaluateCompliance(meta) {
     var title = (meta && meta.title) ? meta.title.trim() : '';
     var author = (meta && meta.author_name) ? meta.author_name.trim() : '';
     var authorLower = author.toLowerCase();
 
+    if (meta && meta.requiresPurchase) {
+      return {
+        checked: true,
+        allowed: false,
+        reason: 'Blocked: This video requires purchase or rental on YouTube (' + (author || 'Paid Storefront') + ').',
+        matchedRule: 'PAID_STREAM_GATE'
+      };
+    }
+
     var allBlocked = BLOCKED_CHANNELS.concat(state.customBlockedChannels);
 
-    // 1. Check specific channel blocklist
+    // 1. Check Paid Storefront Channels (e.g. YouTube Movies & TV)
     for (var i = 0; i < allBlocked.length; i++) {
       var blockedCh = allBlocked[i].toLowerCase().trim();
       if (!blockedCh) continue;
@@ -193,24 +163,24 @@
         return {
           checked: true,
           allowed: false,
-          reason: 'Restricted Channel: "' + author + '" is a protected Movie / Anime distributor.',
-          matchedRule: 'CHANNEL_POLICY (' + allBlocked[i] + ')'
+          reason: 'Blocked: "' + author + '" is a paid YouTube storefront that requires buying or renting this video.',
+          matchedRule: 'PAID_STOREFRONT (' + allBlocked[i] + ')'
         };
       }
     }
 
-    // 2. Check Title Patterns for Full Movies or Anime Episodes
+    // 2. Check Title Patterns for Buy / Rent Store Listings
     for (var p = 0; p < BLOCKED_TITLE_PATTERNS.length; p++) {
       var pat = BLOCKED_TITLE_PATTERNS[p];
       if (pat.test(title)) {
-        if (/trailer|teaser|pv|op\b|ed\b|opening|ending|ost/i.test(title) && !/full\s+(movie|episode)/i.test(title)) {
+        if (/trailer|teaser|preview|clip/i.test(title)) {
           continue;
         }
         return {
           checked: true,
           allowed: false,
-          reason: 'Restricted Content: Title matches protected Full Movie or Anime Episode broadcast pattern.',
-          matchedRule: 'CONTENT_PATTERN (' + pat.toString() + ')'
+          reason: 'Blocked: This video is marked as Buy or Rent and requires payment to watch.',
+          matchedRule: 'PURCHASE_REQUIRED (' + pat.toString() + ')'
         };
       }
     }
@@ -218,8 +188,8 @@
     return {
       checked: true,
       allowed: true,
-      reason: 'Cleared: Creator upload does not match restricted movie/anime distribution channels.',
-      matchedRule: 'PASS'
+      reason: 'Ready: Free YouTube stream verified (anime twixtors, edits & episodes supported).',
+      matchedRule: 'FREE_STREAM_ALLOWED'
     };
   }
 
@@ -265,6 +235,23 @@
     };
   }
 
+  // Typical YouTube H.264 bitrate per tier (Mbps) — used to cap tier by bitrate slider
+  var TIER_BITRATE_MBPS = [
+    { fmt: '4k', h: 2160, mbps: 35 },
+    { fmt: '1440', h: 1440, mbps: 16 },
+    { fmt: '1080', h: 1080, mbps: 8 },
+    { fmt: '720', h: 720, mbps: 5 },
+    { fmt: '480', h: 480, mbps: 2.5 }
+  ];
+
+  function selectedTierIndex() {
+    var r = state.settings.resolution;
+    for (var i = 0; i < TIER_BITRATE_MBPS.length; i++) {
+      if (r.indexOf(String(TIER_BITRATE_MBPS[i].h)) === 0) return i;
+    }
+    return 2;
+  }
+
   // Map UI settings to upstream muxer format code
   function mapSettingsToMuxFormat() {
     var s = state.settings;
@@ -274,12 +261,39 @@
       if (s.container === 'm4a' || s.audioCodec === 'aac') return 'm4a';
       return 'mp3';
     }
-    if (s.resolution.indexOf('2160') === 0) return '4k';
-    if (s.resolution.indexOf('1440') === 0) return '1440';
-    if (s.resolution.indexOf('1080') === 0) return '1080';
-    if (s.resolution.indexOf('720') === 0) return '720';
-    if (s.resolution.indexOf('480') === 0) return '480';
-    return '1080';
+    var idx = selectedTierIndex();
+    // Without a server-side encoder, the slider caps the tier: highest tier whose typical bitrate fits.
+    if (s.videoBitrateMbps > 0 && !state.backendCaps.ffmpeg) {
+      while (idx < TIER_BITRATE_MBPS.length - 1 && TIER_BITRATE_MBPS[idx].mbps > s.videoBitrateMbps) idx++;
+    }
+    return TIER_BITRATE_MBPS[idx].fmt;
+  }
+
+  function needsTranscode() {
+    var s = state.settings;
+    return state.backendCaps.ffmpeg && (s.videoBitrateMbps > 0 || s.audioBitrateKbps > 0);
+  }
+
+  function updateBitrateUI() {
+    var s = state.settings;
+    var vEl = document.getElementById('ytcVideoBitrateValue');
+    var aEl = document.getElementById('ytcAudioBitrateValue');
+    var hint = document.getElementById('ytcBitrateHint');
+    var isAudio = s.resolution === 'audio';
+    if (vEl) vEl.textContent = isAudio ? 'N/A' : (s.videoBitrateMbps > 0 ? s.videoBitrateMbps.toFixed(1) + ' Mbps' : 'Auto');
+    if (aEl) aEl.textContent = s.audioBitrateKbps > 0 ? s.audioBitrateKbps + ' kbps' : 'Auto';
+    var vSlider = document.getElementById('ytcVideoBitrateSlider');
+    if (vSlider) vSlider.disabled = isAudio;
+    if (!hint) return;
+
+    var vMbps = isAudio ? 0 : (s.videoBitrateMbps > 0 ? s.videoBitrateMbps : TIER_BITRATE_MBPS[selectedTierIndex()].mbps);
+    var aKbps = s.audioBitrateKbps > 0 ? s.audioBitrateKbps : (isAudio ? 256 : 160);
+    var mbPerMin = ((vMbps * 1000 + aKbps) * 60) / 8 / 1024;
+    var mode;
+    if (s.videoBitrateMbps === 0 && s.audioBitrateKbps === 0) mode = 'Auto = source quality.';
+    else if (state.backendCaps.ffmpeg) mode = 'Exact re-encode via server FFmpeg.';
+    else mode = 'No FFmpeg on server: slider caps the quality tier (→ ' + mapSettingsToMuxFormat().toUpperCase() + ').';
+    hint.textContent = mode + ' Est. ~' + mbPerMin.toFixed(1) + ' MB/min';
   }
 
   function getOutputExtension() {
@@ -360,25 +374,92 @@
     }
     candidates.push('http://localhost:3000');
 
-    for (var i = 0; i < candidates.length; i++) {
-      var base = candidates[i];
-      try {
-        var ctrl = new AbortController();
-        var timer = setTimeout(function() { ctrl.abort(); }, 1800);
-        var res = await fetch(base + '/__flippy_yt_ping', { signal: ctrl.signal });
-        clearTimeout(timer);
-        if (res.ok) {
-          var j = await res.json();
-          if (j && j.ok) {
-            state.backendApiBase = base;
-            return base;
-          }
-        }
-      } catch (_) {}
-    }
+    // Probe all candidates in parallel; first healthy one wins
+    var probes = candidates.map(function(base) {
+      var ctrl = new AbortController();
+      var timer = setTimeout(function() { ctrl.abort(); }, 1500);
+      return fetch(base + '/__flippy_yt_ping', { signal: ctrl.signal, cache: 'no-store' })
+        .then(function(res) { clearTimeout(timer); return res.ok ? res.json() : null; })
+        .then(function(j) {
+          if (!j || !j.ok) throw new Error('bad');
+          state.backendCaps.ffmpeg = !!j.ffmpeg;
+          return base;
+        });
+    });
+
+    try {
+      var winner = await Promise.any(probes);
+      state.backendApiBase = winner;
+      updateBitrateUI();
+      return winner;
+    } catch (_) {}
 
     state.backendApiBase = false;
     return false;
+  }
+
+  // Parallel HTTP Range download (falls back to single stream if Range is unsupported)
+  async function fetchMediaFast(url, onProgress) {
+    var CHUNK = 4 * 1024 * 1024;
+    var CONCURRENCY = 6;
+    var total = 0;
+    try {
+      var probe = await fetch(url, { headers: { Range: 'bytes=0-0' } });
+      var cr = probe.headers.get('content-range');
+      if (probe.status === 206 && cr && /\/(\d+)$/.test(cr)) total = Number(RegExp.$1);
+      try { await probe.body && probe.body.cancel(); } catch (_) {}
+    } catch (_) {}
+
+    if (total > CHUNK) {
+      var parts = new Array(Math.ceil(total / CHUNK));
+      var received = 0;
+      var next = 0;
+      async function worker() {
+        while (next < parts.length) {
+          var i = next++;
+          var start = i * CHUNK;
+          var end = Math.min(total - 1, start + CHUNK - 1);
+          for (var attempt = 0; attempt < 3; attempt++) {
+            try {
+              var r = await fetch(url, { headers: { Range: 'bytes=' + start + '-' + end } });
+              if (r.status !== 206) throw new Error('Range not honored');
+              var buf = await r.arrayBuffer();
+              if (buf.byteLength !== end - start + 1) throw new Error('Short chunk');
+              parts[i] = buf;
+              received += buf.byteLength;
+              onProgress(received, total, true);
+              break;
+            } catch (e) {
+              if (attempt === 2) throw e;
+            }
+          }
+        }
+      }
+      try {
+        var workers = [];
+        for (var w = 0; w < Math.min(CONCURRENCY, parts.length); w++) workers.push(worker());
+        await Promise.all(workers);
+        return parts;
+      } catch (_) {
+        // fall through to single stream
+      }
+    }
+
+    var res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var len = Number(res.headers.get('content-length')) || 0;
+    if (!res.body || typeof res.body.getReader !== 'function') return [await res.arrayBuffer()];
+    var reader = res.body.getReader();
+    var chunks = [];
+    var got = 0;
+    while (true) {
+      var step = await reader.read();
+      if (step.done) break;
+      chunks.push(step.value);
+      got += step.value.length;
+      onProgress(got, len, false);
+    }
+    return chunks;
   }
 
   // Apply a Device Preset (e.g. iPhone Photos, Android MP4, Desktop 4K60, NLE Edit)
@@ -415,6 +496,7 @@
 
   // Update UI State
   function updateUI() {
+    updateBitrateUI();
     var statusBadge = document.getElementById('ytcComplianceBadge');
     var statusReason = document.getElementById('ytcComplianceReason');
     var statusRule = document.getElementById('ytcComplianceRule');
@@ -467,8 +549,8 @@
         statusBadge.className = 'ytc-compliance-badge idle';
         statusBadge.textContent = 'AWAITING LINK';
       }
-      if (statusReason) statusReason.textContent = 'Paste a YouTube link above to verify channel & copyright eligibility.';
-      if (statusRule) statusRule.textContent = 'POLICY: NO FULL MOVIES / NO LICENSED ANIME EPISODES';
+      if (statusReason) statusReason.textContent = 'Paste any YouTube link (including anime twixtors, edits & clips) to verify stream availability.';
+      if (statusRule) statusRule.textContent = 'POLICY: FREE YOUTUBE STREAMS ALLOWED · PAID / BUY-OR-RENT VIDEOS BLOCKED';
       if (downloadBtn) downloadBtn.disabled = true;
       return;
     }
@@ -489,19 +571,19 @@
       if (state.compliance.allowed) {
         if (statusBadge) {
           statusBadge.className = 'ytc-compliance-badge pass';
-          statusBadge.textContent = 'VERIFIED CLEAR · PERMITTED';
+          statusBadge.textContent = 'FREE STREAM · READY TO DOWNLOAD';
         }
         if (statusReason) statusReason.textContent = state.compliance.reason;
-        if (statusRule) statusRule.textContent = 'RULE: ' + state.compliance.matchedRule;
-        if (downloadBtn) downloadBtn.disabled = !state.settings.legalAttested || state.isDownloading;
+        if (statusRule) statusRule.textContent = 'STATUS: ' + state.compliance.matchedRule;
+        if (downloadBtn) downloadBtn.disabled = state.isDownloading;
       } else {
         clearReadyMedia();
         if (statusBadge) {
           statusBadge.className = 'ytc-compliance-badge blocked';
-          statusBadge.textContent = 'BLOCKED · COPYRIGHT / LICENSED MEDIA';
+          statusBadge.textContent = 'BLOCKED · REQUIRES PURCHASE / RENTAL';
         }
         if (statusReason) statusReason.textContent = state.compliance.reason;
-        if (statusRule) statusRule.textContent = 'RULE: ' + state.compliance.matchedRule;
+        if (statusRule) statusRule.textContent = 'STATUS: ' + state.compliance.matchedRule;
         if (downloadBtn) downloadBtn.disabled = true;
       }
     }
@@ -588,33 +670,26 @@
     }
   }
 
-  // Tier 2 & 3 Static Fallback when no local/edge proxy is running (NEVER emits .bat!)
+  // Fallback when no local/edge proxy is running (100% popup-free & ad-free)
   function activateStaticMp4Fallback(ytWatchUrl, muxFmt) {
-    var embedUrl = 'https://p.savenow.to/api/button/?url=' + encodeURIComponent(ytWatchUrl) + '&f=' + encodeURIComponent(muxFmt) + '&color=e8a849&ads=1';
-    var embedWrap = document.getElementById('ytcEmbedFallbackWrap');
-    var embedFrame = document.getElementById('ytcEmbedFrame');
-    var embedTag = document.getElementById('ytcEmbedFormatTag');
     var progText = document.getElementById('ytcProgressStatus');
     var progFill = document.getElementById('ytcProgressBarFill');
+    var progWrap = document.getElementById('ytcProgressWrap');
+    var dlBtn = document.getElementById('ytcDownloadBtn');
+    var dlLabel = document.getElementById('ytcDownloadBtnLabel');
 
-    if (embedTag) embedTag.textContent = muxFmt.toUpperCase() + ' .' + getOutputExtension().toUpperCase();
-
-    if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
-      if (embedFrame) embedFrame.src = embedUrl;
-      if (embedWrap) embedWrap.style.display = 'flex';
-      if (progFill) progFill.style.width = '100%';
-      if (progText) progText.textContent = 'Direct .MP4 converter ready below — tap the button inside to save your .MP4!';
-    } else {
-      // Opened via file:/// with local server stopped: launch standalone Direct MP4 mini-window
-      window.open(embedUrl, 'FlippyDirectMP4', 'width=460,height=190,menubar=no,toolbar=no,location=no,status=no');
-      if (progFill) progFill.style.width = '100%';
-      if (progText) progText.textContent = 'Opened Direct .MP4 Downloader window (run "node server.js" for inline iPhone Photos buffering).';
+    if (progWrap) progWrap.style.display = 'flex';
+    if (progFill) progFill.style.width = '0%';
+    if (dlBtn) dlBtn.disabled = false;
+    if (dlLabel) dlLabel.textContent = 'Download .MP4 Video';
+    if (progText) {
+      progText.textContent = 'Stream server offline. Please start "node server.js" on port 3000 for 100% ad-free & popup-free downloads.';
     }
   }
 
   // Execute Real .MP4 Stream Conversion, Buffering & Download Pipeline
   async function startDownloadProcess() {
-    if (!state.meta || !state.compliance.allowed || !state.settings.legalAttested || state.isDownloading) return;
+    if (!state.meta || !state.compliance.allowed || state.isDownloading) return;
 
     clearReadyMedia();
 
@@ -667,11 +742,13 @@
       var jobId = startData.id;
       var directDownloadUrl = startData.download_url || null;
 
-      // Step 2: Poll conversion progress until MP4 muxing reaches 100%
-      var maxPolls = 45;
-      for (var pollIdx = 0; pollIdx < maxPolls && !directDownloadUrl; pollIdx++) {
-        await new Promise(function(r) { setTimeout(r, 1400); });
-        var pRes = await fetch(apiBase + '/__flippy_yt_progress?id=' + encodeURIComponent(jobId));
+      // Step 2: Adaptive polling — fast early checks, then back off
+      var pollStart = Date.now();
+      var pollDelay = 400;
+      for (var pollIdx = 0; !directDownloadUrl && (Date.now() - pollStart) < 90000; pollIdx++) {
+        await new Promise(function(r) { setTimeout(r, pollDelay); });
+        pollDelay = Math.min(1500, Math.round(pollDelay * 1.35));
+        var pRes = await fetch(apiBase + '/__flippy_yt_progress?id=' + encodeURIComponent(jobId), { cache: 'no-store' });
         if (!pRes.ok) continue;
         var pData = await pRes.json();
 
@@ -695,38 +772,38 @@
         throw new Error('Timed out waiting for MP4 muxer. Try 1080p preset.');
       }
 
-      // Step 3: Buffer real .MP4 binary stream (CORS: *) for instant preview & iPhone Photos Web Share!
+      // Optional: exact bitrate re-encode through server FFmpeg (streams back as fragmented MP4)
+      var fetchUrl = directDownloadUrl;
+      if (needsTranscode()) {
+        var tq = 'src=' + encodeURIComponent(directDownloadUrl) + '&ext=' + encodeURIComponent(outExt);
+        if (state.settings.videoBitrateMbps > 0 && outExt === 'mp4') tq += '&vb=' + Math.round(state.settings.videoBitrateMbps * 1000);
+        if (state.settings.audioBitrateKbps > 0) tq += '&ab=' + state.settings.audioBitrateKbps;
+        fetchUrl = apiBase + '/__flippy_yt_transcode?' + tq;
+        if (progText) progText.textContent = 'Re-encoding to target bitrate (FFmpeg)...';
+      }
+
+      // Step 3: Buffer the file (parallel range chunks when possible) for preview & iPhone Photos share
       if (progFill) progFill.style.width = '65%';
-      if (progText) progText.textContent = 'Downloading .' + outExt.toUpperCase() + ' file to device memory...';
+      if (progText && fetchUrl === directDownloadUrl) progText.textContent = 'Downloading .' + outExt.toUpperCase() + ' file to device memory...';
 
       var mediaBlob = null;
+      var dlStart = performance.now();
       try {
-        var mediaRes = await fetch(directDownloadUrl);
-        if (mediaRes.ok && mediaRes.body && typeof mediaRes.body.getReader === 'function') {
-          var contentLen = Number(mediaRes.headers.get('content-length')) || 0;
-          var reader = mediaRes.body.getReader();
-          var chunks = [];
-          var received = 0;
-
-          while (true) {
-            var step = await reader.read();
-            if (step.done) break;
-            chunks.push(step.value);
-            received += step.value.length;
-            var mb = (received / (1024 * 1024)).toFixed(1);
-            if (contentLen > 0) {
-              var dlPct = Math.round((received / contentLen) * 100);
-              if (progFill) progFill.style.width = (60 + Math.round(dlPct * 0.4)) + '%';
-              if (progText) progText.textContent = 'Receiving .' + outExt.toUpperCase() + ': ' + mb + ' MB (' + dlPct + '%)...';
-            } else {
-              if (progText) progText.textContent = 'Receiving .' + outExt.toUpperCase() + ': ' + mb + ' MB...';
-            }
+        var parts = await fetchMediaFast(fetchUrl, function(received, total, parallel) {
+          var mb = (received / (1024 * 1024)).toFixed(1);
+          var secs = Math.max(0.001, (performance.now() - dlStart) / 1000);
+          var speed = (received / (1024 * 1024) / secs).toFixed(1);
+          var tag = parallel ? ' · 6× parallel' : '';
+          if (total > 0) {
+            var dlPct = Math.round((received / total) * 100);
+            if (progFill) progFill.style.width = (60 + Math.round(dlPct * 0.4)) + '%';
+            if (progText) progText.textContent = 'Receiving .' + outExt.toUpperCase() + ': ' + mb + ' MB (' + dlPct + '%) · ' + speed + ' MB/s' + tag;
+          } else if (progText) {
+            progText.textContent = 'Receiving .' + outExt.toUpperCase() + ': ' + mb + ' MB · ' + speed + ' MB/s' + tag;
           }
-          mediaBlob = new Blob(chunks, { type: mimeType });
-        } else if (mediaRes.ok) {
-          var rawBlob = await mediaRes.blob();
-          mediaBlob = new Blob([rawBlob], { type: mimeType });
-        }
+        });
+        mediaBlob = new Blob(parts, { type: mimeType });
+        if (!mediaBlob.size) mediaBlob = null;
       } catch (_) {
         mediaBlob = null;
       }
@@ -908,6 +985,19 @@
     bindSelect('ytcVideoCodecSelect', 'videoCodec');
     bindSelect('ytcAudioCodecSelect', 'audioCodec');
     bindSelect('ytcContainerSelect', 'container');
+
+    var vbSlider = document.getElementById('ytcVideoBitrateSlider');
+    var abSlider = document.getElementById('ytcAudioBitrateSlider');
+    if (vbSlider) vbSlider.addEventListener('input', function() {
+      state.settings.videoBitrateMbps = parseFloat(vbSlider.value) || 0;
+      clearReadyMedia();
+      updateUI();
+    });
+    if (abSlider) abSlider.addEventListener('input', function() {
+      state.settings.audioBitrateKbps = parseInt(abSlider.value, 10) || 0;
+      clearReadyMedia();
+      updateUI();
+    });
 
     var trimToggle = document.getElementById('ytcTrimToggle');
     var trimRow = document.getElementById('ytcTrimRow');

@@ -511,3 +511,173 @@ At the end of every prompt:
 - **Learnings & Invariants**:
   - Never emit `.bat` or shell scripts for media download buttons; mobile browsers cannot execute desktop batch scripts and expect `video/mp4` binaries.
   - On iOS Safari, `navigator.share({ files })` throws `NotAllowedError` if invoked after an async network `await`; buffering the `.mp4` `File` object first and invoking `navigator.share` synchronously on the user's tap is mandatory for saving directly to iPhone Photos.
+
+### [2026-11-01 12:56] — Ported Direct `.MP4` YouTube Downloader Tab & Obsidian Jade Multi-Theme System to `flippy-v3`
+- **Prompt / Request**: Convert all YouTube Downloader ("YT Converter") features (1080p/4K60, codec/container selector, Movie/Anime channel & title compliance gate, direct `.mp4` streaming, and iPhone "Save to Photos" preset) to `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3` and overhaul the theme of the `flippy-v3` website while preserving `flippy-v3`'s native tabs and Edge Gate device-bound authentication.
+- **Files Created / Modified**:
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\ytconverter.js` & `...\public\ytconverter.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\index.html` & `...\public\index.html`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\styles.css` & `...\public\styles.css`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\app.js` & `...\public\app.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\fx.js` & `...\public\fx.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\Graph.html`, `Graph2.html` & `...\public\Graph.html`, `Graph2.html`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\worker.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\server.js`
+  - `Flip layer website/AGENT.md` & `AGENT.md`
+- **Adjustments Made**:
+  - Integrated `#navTabYtConverter`, `#ytconverter-panel`, and `#mobileTabYtConverter` (`YT MP4`) into `flippy-v3` alongside `Wipe Studio`, `Media Converter`, and `Hollow Box Maker`.
+  - Ported `/__flippy_yt_ping`, `/__flippy_yt_dl`, and `/__flippy_yt_progress` direct `.mp4` muxer proxy routes and server-side Movie/Anime copyright compliance checks into `flippy-v3/worker.js` and `flippy-v3/server.js`.
+  - Overhauled the entire `flippy-v3` UI, bezier graph editors, 3D Hollow Box canvas, starfield, and Cloudflare Edge Gate to the **Obsidian Jade & Brushed Champagne (`jade`)** design system with live 3-way theme switching (`Jade` / `Crimson` / `Light`).
+- **Learnings & Invariants**:
+  - Keep `flippy-v3/` and `flippy-v3/public/` 1:1 synchronized on every static edit for Cloudflare Workers `env.ASSETS`.
+  - Preserve `flippy-v3`'s 3-key SHA-256 whitelist, `FLIPPY_KV` + `CLOUD_SYNC_STORE_ID` sync, and `:app` PWA vs. browser device-lock slots untouched.
+
+### [2026-11-01 13:08] — Added Access Key: `FLIPPY-USER-GOJO` to `flippy-v3`
+- **Prompt / Request**: Add key `FLIPPY-USER-GOJO` to the v3 website.
+- **Files Modified**:
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\worker.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\server.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\public\index.html`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\index.html`
+  - `Flip layer website/AGENT.md`
+  - `AGENT.md`
+- **Adjustments Made**:
+  - Computed SHA-256 hash for `FLIPPY-USER-GOJO`: `cf4447344d3819c58c999b4060f6c5d4f9d2c3bbfb67d8f80f4fc7d2ddc7697a`.
+  - Added user `Gojo` with `maxDevices: 1` to `AUTHORIZED_KEYS` across `worker.js`, `server.js`, `public/index.html`, and `index.html`.
+  - Registry now holds 4 active member keys: `Kingdom`, `CJ`, `VIP`, and `Gojo`.
+- **Learnings & Invariants**:
+  - All keys in `flippy-v3` must maintain `maxDevices: 1` single-device enforcement with dual-slot `:app` (Homescreen PWA) compatibility.
+
+### [2026-11-01 13:28] — Stopped All Popups When Saving MP4 Videos in Flippy v3
+- **Prompt / Request**: Stop popups from appearing when saving MP4 videos in Flippy v3.
+- **Files Modified**:
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\ytconverter.js` & `...\public\ytconverter.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\server.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\worker.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\index.html` & `...\public\index.html`
+  - `Flip layer website/AGENT.md` & `AGENT.md`
+- **Adjustments Made**:
+  - **Identified Root Causes of Popups**:
+    1. `activateStaticMp4Fallback` called `window.open(embedUrl, 'FlippyDirectMP4', ...)`, creating a literal popup window containing third-party ad scripts.
+    2. Upstream `savenow.to/api/button/` contained `onclick="openInitialAd()"` and returned `download_url` that 302-redirected to `https://p.savenow.to/ajax/ad/b.php` and `https://hai8g.com/4/4683427` (ad network).
+    3. When client-side `fetch()` failed to parse the cross-origin stream, `triggerBrowserDownload(directDownloadUrl)` triggered a browser navigation/tab to the ad redirect.
+    4. The fallback `<iframe id="ytcEmbedFrame">` in `index.html` allowed third-party ad-redirect scripts to execute.
+  - **Eliminated All Popup Vectors**:
+    1. Removed all `window.open` calls from `ytconverter.js`.
+    2. Integrated high-performance native `yt-dlp` + standalone `ffmpeg` v7.1 engine in `server.js` on endpoint `/__flippy_yt_stream`. Videos download locally into `os.tmpdir()` and stream raw `video/mp4` binaries directly to the client with `Content-Type: video/mp4`, `Content-Disposition`, and HTTP Range support.
+    3. Added `/__flippy_yt_stream` in `worker.js` with server-side ad blocking (drops any upstream response containing HTML ads or redirects to `hai8g.com`).
+    4. In `ytconverter.js`, strictly constrained `triggerBrowserDownload` to only ever download from same-origin `blob:` URLs or verified `/__flippy_yt_stream` endpoints — never passing raw third-party ad URLs to `<a>` tags.
+    5. Removed the fallback ad iframe from `index.html` and `public/index.html`.
+- **Learnings & Invariants**:
+  - Never allow third-party download API redirects to reach client-side `<a href>` elements or `window.open`. Always stream media binaries through safe same-origin proxy endpoints or buffer into local `Blob` objects.
+
+### [2026-11-01 13:48] — Fixed `hai8g.com` Redirect on "Download MP4 Directly" & "Save MP4" in Flippy v3 (`asurabum` Cloudflare Worker)
+- **Prompt / Request**: Fix pressing "Download MP4 Directly" and "Save MP4" in Flippy v3 (`C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3` / `https://asurabum.zoronwisyt.workers.dev/`) redirecting to `https://hai8g.com/4/4683427` instead of downloading the video.
+- **Files Modified**:
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\worker.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\server.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\ytconverter.js` & `...\public\ytconverter.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\index.html` & `...\public\index.html`
+  - `Flip layer website/AGENT.md` & `AGENT.md`
+- **Adjustments Made**:
+  - **Root Causes Eliminated**:
+    1. `worker.js` and `server.js` previously called `/api/v2/download?button=1` + `/api/progress`, whose `download_url` (`http://p.savenow.to/api/v2/download/...`) 302-redirected to `https://p.savenow.to/ajax/ad/b.php` -> `https://hai8g.com/4/4683427`. Switched upstream calls to `/ajax/download.php` + `/ajax/progress.php` (`Origin: https://en.loader.to`), which returns direct storage node URLs (`https://<node>.savenow.to/api/v2/download/...`) serving HTTP 200 `video/mp4` (`ftypisom`) with `Location: null`.
+    2. Fixed `apiBase === ""` empty-string falsiness & `.startsWith("")` bug in `ytconverter.js`: on Cloudflare Workers (`https://asurabum.zoronwisyt.workers.dev/`), `apiBase` is `""`, which previously caused `!streamUrl.startsWith(apiBase) && apiBase` to evaluate to `false` and exposed raw upstream URLs on `#ytcDirectMp4Link` ("⬇ Download .MP4 Directly") and `triggerBrowserDownload()`.
+    3. Rewrote `download_url` server-side inside `/__flippy_yt_dl` and `/__flippy_yt_progress` to `/__flippy_yt_stream?src=...` so external URLs never enter browser JSON responses.
+    4. Upgraded `/__flippy_yt_stream` in `worker.js` and `server.js` with `redirect: "manual"` host allowlisting, magic-byte inspection (rejecting HTML/JSON), and automatic fresh-token re-muxing (`?url=...&format=...`) when single-use stream tokens are spent.
+    5. Added `isSafeDownloadHref()` guard in `triggerBrowserDownload()` and `#ytcDirectMp4Link` click listener, plus bumped asset cache-buster `?v=4.0` -> `?v=5.1` and `Cache-Control: no-cache` on `/index.html` and `/ytconverter.js`.
+- **Learnings & Invariants**:
+  - On same-origin deployments (`apiBase === ""`), never test `Boolean(apiBase)` or `url.startsWith(apiBase)`; explicitly check `apiBase !== false && apiBase !== null` and validate download URLs against `blob:` or `/__flippy_yt_stream`.
+  - Upstream `v2_stream_*` storage tokens are single-use; fallback links (`#ytcDirectMp4Link`) must either bind to buffered `blob:` URLs or pass `url` + `format` to `/__flippy_yt_stream` so the Worker can mint a fresh clean binary stream on demand.
+
+### [2026-11-01 14:21] — Fixed `.json` Error File Download on `asurabum` Cloudflare Worker & Built Edge-Verified Multi-Provider `.MP4` Engine
+- **Prompt / Request**: On `https://asurabum.zoronwisyt.workers.dev/` (`C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3`), entering a YouTube link and downloading no longer showed popups, but saved a `.json` file instead of the `.mp4` video.
+- **Files Modified**:
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\worker.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\server.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\ytconverter.js` & `...\public\ytconverter.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\index.html` & `...\public\index.html`
+  - `Flip layer website/AGENT.md` & `AGENT.md`
+- **Adjustments Made**:
+  - **Root Causes Identified via Live Cloudflare Worker (`AS13335`) Probe**:
+    1. `savenow.to` detects Cloudflare Worker datacenter egress (`AS13335` / `CF-Worker`) and ad-gates 100% of Worker requests (`302 -> /ajax/ad/b.php -> hai8g.com`), even on `/ajax/download.php` and PoW Bearer tokens.
+    2. `worker.js` blocked the ad redirect and returned `HTTP 502 application/json` (`{"success":false,"error":...}`).
+    3. `ytconverter.js` fell back to `triggerBrowserDownload(reusableStreamUrl)` (`<a href="/__flippy_yt_stream?..." download="...mp4">.click()`) when `mediaBlob` was `null`, causing the browser to save the `502 application/json` payload as a `.json` file.
+  - **Edge-Verified Cloud `.MP4` Engine (`worker.js` & `server.js`)**:
+    1. Replaced `savenow.to` completely with a dual-provider edge extraction pipeline verified live on Cloudflare Workers (`AS13335`):
+       - **Primary**: SaveTube CDN (`media.savetube.vip/api/random-cdn` + WebCrypto AES-128-CBC payload decryption + `/download`), serving direct `HTTP 200 video/mp4` (`ftypisom` H.264+AAC) with `Content-Length` and zero redirects.
+       - **Failover**: Cobalt v11 API (`rue-cobalt.xenon.zone` + dynamic 10-minute cached discovery of `turnstile: false` YouTube-online instances from `cobalt.directory`), streaming `ftypisom` `.mp4` and `.mp3`/`.wav` tunnels.
+    2. Added stateless HMAC-SHA256 signed stream tokens (`mintStreamToken` / `verifyStreamToken`) so `/__flippy_yt_dl` and `/__flippy_yt_stream` work across distinct Cloudflare Worker isolates, with automatic provider-chain re-resolution if a token expires or fails `openVerifiedBinaryStream` (`ftyp` / magic-byte inspection).
+  - **Eliminated `.json` Downloads Completely (`ytconverter.js`)**:
+    1. Restricted `isSafeDownloadHref()` strictly to `blob:` URLs (`href.indexOf('blob:') === 0`) — `<a download>` can never point to an HTTP endpoint that might emit JSON or redirect.
+    2. Hardened `isLikelyValidMediaChunk()` to reject any payload starting with `<`, `{`, or `[`, and updated `startDownloadProcess()` to parse HTTP error JSON and display clear status errors in `#ytcProgressStatus` instead of triggering a file download when `mediaBlob` is null.
+    3. Bumped asset cache-buster `?v=5.1` -> `?v=5.2` and verified 1:1 SHA-256 parity across `flippy-v3/` and `flippy-v3/public/`.
+- **Learnings & Invariants**:
+  - Always verify cloud media extractors directly from a real Cloudflare Worker isolate (`AS13335`), as residential IP behavior differs from Cloudflare datacenter egress.
+  - Never pass HTTP API endpoints directly to `<a download>` when errors return `application/json`; always buffer and verify binary magic bytes into an in-memory `Blob` (`blob:` URL) before invoking file save or iOS `navigator.share({ files })`.
+
+### [2026-11-01 14:34] — Added Dual Video & Audio Bitrate Sliders to YouTube Downloader (`flippy-v3`)
+- **Prompt / Request**: Add a bitrate slider so the quality of YouTube downloads can be changed.
+- **Files Modified**:
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\index.html` & `...\public\index.html`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\styles.css` & `...\public\styles.css`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\ytconverter.js` & `...\public\ytconverter.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\server.js`
+  - `Flip layer website/AGENT.md` & `AGENT.md`
+- **Adjustments Made**:
+  - **Bitrate Slider UI**:
+    - Added responsive `.ytc-bitrate-block` under Stream Quality & Encoding in `index.html` with:
+      - Video Bitrate slider (`0` to `60 Mbps`, step `0.5`, default `0 = Auto`), with live readout `#ytcVideoBitrateValue` and disabled state when `resolution === 'audio'`.
+      - Audio Bitrate slider (`0` to `320 kbps`, step `32`, default `0 = Auto`), with live readout `#ytcAudioBitrateValue`.
+      - Dynamic bitrate hint `#ytcBitrateHint` calculating estimated output file size in `~MB/min`.
+  - **Engine Integration & Quality Mapping**:
+    - Added `TIER_BITRATE_MBPS` tier table (`4k`: 35 Mbps, `1440`: 16 Mbps, `1080`: 8 Mbps, `720`: 5 Mbps, `480`: 2.5 Mbps).
+    - When `videoBitrateMbps > 0` and running in serverless cloud mode (`worker.js`), `mapSettingsToMuxFormat()` automatically caps the source stream to the highest quality tier matching the user's bitrate cap.
+    - Added `/__flippy_yt_transcode` endpoint and `HAS_FFMPEG` detection to `server.js` (`-c:v libx264 -b:v ${vb}k -maxrate ${vb}k -bufsize ${vb*2}k` and `-b:a ${ab}k`) for exact bit-accurate re-encoding when running locally.
+    - Updated `generateCliCommand()` to output `--postprocessor-args` with ffmpeg `-b:v` when bitrate is adjusted.
+  - **Parity & Cache Busting**:
+    - Synced all static files 1:1 between `flippy-v3/` root and `flippy-v3/public/` (all SHA-256 hashes verified).
+    - Bumped asset cache-busters to `?v=5.3`.
+- **Learnings & Invariants**:
+  - Keep bitrate sliders synchronized with device presets so tapping a preset resets the sliders to Auto (`0`) while maintaining manual override capability.
+
+### [2026-11-01 14:47] — Motion Algorithm Trim & Paid-Only YT Converter Gate (`flippy-v3`)
+- **Prompt / Request**: In Motion Algorithm, remove Cube and Hollow Box in Flippy V3. For the YT converter, remove the legal/anime guardrails so anime twixtors and episodes can download freely, and only block links that require purchase/rental on YouTube.
+- **Files Modified**:
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\index.html` & `...\public\index.html`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\ytconverter.js` & `...\public\ytconverter.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\worker.js`
+  - `C:\Users\jeduc\Downloads\flippy-main\flippy-main\flippy-v3\server.js`
+  - `Flip layer website/AGENT.md` & `AGENT.md`
+- **Adjustments Made**:
+  - **Motion Algorithm (`#animTypeToggle` in `index.html`)**:
+    - Removed `Cube` (`data-value="cube"`) and `Hollow Box` (`data-value="hollowbox"`) buttons from `#animTypeToggle` under Module 03 (`Motion Engine`), leaving `None`, `Flip`, `Box`, and `Box V2`.
+  - **YT Converter — Paid / Buy-or-Rent Stream Filter (`ytconverter.js`, `index.html`, `worker.js`, `server.js`)**:
+    - Removed the anime/studio channel blocklist (`crunchyroll`, `toei animation`, `mappa`, `aniplex`, `netflix`, etc.) and episodic/movie regex blocks across client, Cloudflare Worker, and Node server.
+    - Replaced `BLOCKED_CHANNELS` / `YT_BLOCKED_CHANNELS` and `BLOCKED_TITLE_PATTERNS` / `YT_BLOCKED_TITLE_PATTERNS` with a paid storefront & rental check (`youtube movies`, `youtube movies & tv`, `youtube primetime`, `google play movies & tv`, `movies & shows`, and `buy or rent` / `requires purchase` / paid upstream stream errors).
+    - Removed the mandatory copyright attestation checkbox (`#ytcLegalAttestCheck`) and updated Card 03 & presets in `index.html` to reflect that all free YouTube streams (including anime twixtors, scenepacks, and episodes) are unlocked.
+    - Bumped asset cache-busters to `?v=5.4` and verified 1:1 SHA-256 parity with `public/`.
+- **Learnings & Invariants**:
+  - Never block anime twixtors, scenepacks, AMVs, or free YouTube uploads in `verifyYoutubeCompliance` or `evaluateCompliance`; only reject links that require payment/rental to watch.
+
+### [2026-11-01 14:56] — Paid-Only YouTube Converter Gate Ported to Flippy v4
+- **Prompt / Request**: In C:\Users\jeduc\Downloads\Flippy v4, add the ability to download every YouTube video except the ones that are needed to be bought.
+- **Files Modified**:
+  - `C:\Users\jeduc\Downloads\Flippy v4\index.html`
+  - `C:\Users\jeduc\Downloads\Flippy v4\ytconverter.js`
+  - `C:\Users\jeduc\Downloads\Flippy v4\worker.js`
+  - `C:\Users\jeduc\Downloads\Flippy v4\server.js`
+  - `Flip layer website/AGENT.md` & `AGENT.md`
+- **Adjustments Made**:
+  - **Replaced Blanket Copyright/Anime Blocklists with Paid / Buy-or-Rent Gate**:
+    - Removed all anime/studio channel blocks (`crunchyroll`, `toei animation`, `mappa`, `aniplex`, `netflix`, `sony pictures`, etc.) and full episode / movie pattern blocks across `ytconverter.js`, `server.js`, and `worker.js`.
+    - Restricted `BLOCKED_CHANNELS` strictly to paid storefront channels: `youtube movies`, `youtube movies & tv`, `youtube primetime`, `google play movies & tv`, and `movies & shows`.
+    - Restricted `BLOCKED_TITLE_PATTERNS` to explicit purchase/rental indicators: `buy or rent`, `rent or buy`, `requires purchase`, `purchase required`.
+    - Updated `evaluateCompliance(meta)` in `ytconverter.js` and `verifyYoutubeCompliance(ytUrl)` in `server.js` / `worker.js` so all free YouTube streams (anime twixtors, edits, scenepacks, AMVs, independent animations, and creator episodes) are cleared immediately.
+  - **UI & Attestation Polish (`index.html` & `ytconverter.js`)**:
+    - Removed mandatory `#ytcLegalAttestCheck` checkbox requirement so users do not have to attest to copyright rules before downloading.
+    - Updated `#ytconverter-panel` title, test presets, and Card 03 (`03 · Purchase Gate & Session Queue`, tag `Paywall Check`).
+    - Added cache-buster `ytconverter.js?v=5.4`.
+    - Restarted local server daemon on port 3000 and verified `/__flippy_yt_ping` and `/__flippy_yt_dl` live.
+- **Learnings & Invariants**:
+  - Apply the paid-only policy consistently across all Flippy versions (`v3` and `v4`) so both local server and client gates allow unrestricted free YouTube media.

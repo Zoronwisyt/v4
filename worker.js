@@ -5,26 +5,16 @@
  */
 
 const BLOCKED_CHANNELS = [
-  'crunchyroll', 'crunchyroll collection', 'crunchyroll dubs',
-  'netflix', 'netflix anime', 'toei animation', 'muse asia',
-  'ani-one asia', 'aniplex', 'vizmedia', 'viz media', 'funimation',
-  'kadokawa', 'kadokawaanime', 'mappa', 'mappa channel', 'gundaminfo',
-  'bandai namco', 'tms entertainment', 'pony canyon', 'toho animation',
-  'shonen jump', 'sony pictures', 'sony pictures entertainment',
-  'warner bros. pictures', 'warner bros', 'universal pictures',
-  'paramount pictures', 'walt disney studios', 'marvel entertainment',
-  '20th century studios', 'lionsgate movies', 'mgm', 'a24',
-  'youtube movies', 'prime video', 'hulu', 'peacock', 'hbo', 'max'
+  'youtube movies',
+  'youtube movies & tv',
+  'youtube primetime',
+  'google play movies & tv',
+  'movies & shows'
 ];
 
 const BLOCKED_TITLE_PATTERNS = [
-  /\bfull\s+movie\b/i,
-  /\bfull\s+episode\b/i,
-  /\b(?:episode|ep\.?)\s*\d+\s*(?:\||-|\[|\(|full|eng\s*sub|sub|dub)/i,
-  /\bs\d{1,2}\s*e\d{1,3}\b/i,
-  /\b(?:eng(?:lish)?\s+sub(?:s|titled)?|multi\s*sub)\b.*\b(?:episode|ep\.?\s*\d+|anime)\b/i,
-  /\b(?:anime\s+full\s+episode|official\s+episode)\b/i,
-  /\b(?:complete\s+feature\s+film|official\s+full\s+movie)\b/i
+  /\b(?:buy\s+or\s+rent|rent\s+or\s+buy)\b/i,
+  /\b(?:requires\s+purchase|purchase\s+required|paid\s+rental)\b/i
 ];
 
 const ALLOWED_FORMATS = new Set([
@@ -61,15 +51,18 @@ async function verifyYoutubeCompliance(ytUrl) {
       if (author === ch || author.includes(ch)) {
         return {
           allowed: false,
-          reason: `Restricted Channel: "${meta.author_name}" is a protected Movie / Anime distributor.`
+          reason: `Blocked: "${meta.author_name}" is a paid YouTube storefront that requires buying or renting this video.`
         };
       }
     }
     for (const pat of BLOCKED_TITLE_PATTERNS) {
       if (pat.test(title)) {
+        if (/trailer|teaser|preview|clip/i.test(title)) {
+          continue;
+        }
         return {
           allowed: false,
-          reason: 'Restricted Content: Title matches protected Full Movie or Anime Episode broadcast pattern.'
+          reason: 'Blocked: This video is marked as Buy or Rent and requires purchase on YouTube.'
         };
       }
     }
@@ -82,28 +75,25 @@ async function verifyYoutubeCompliance(ytUrl) {
 async function fetchUpstreamJson(pathname, queryObj) {
   const hosts = ['https://p.savenow.to', 'https://p.lbserver.xyz'];
   const qs = new URLSearchParams(queryObj).toString();
-  let lastErr = null;
-
-  for (const host of hosts) {
-    try {
-      const r = await fetch(`${host}${pathname}?${qs}`, {
-        method: 'GET',
-        headers: {
-          'Origin': host,
-          'Referer': `${host}/api/button/`,
-          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-          'Accept': 'application/json'
-        }
-      });
-      if (r.ok) {
-        return await r.json();
+  // Race hosts in parallel; first good JSON wins
+  const attempts = hosts.map(async (host) => {
+    const r = await fetch(`${host}${pathname}?${qs}`, {
+      method: 'GET',
+      headers: {
+        'Origin': host,
+        'Referer': `${host}/api/button/`,
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+        'Accept': 'application/json'
       }
-      lastErr = new Error(`Upstream HTTP ${r.status}`);
-    } catch (e) {
-      lastErr = e;
-    }
+    });
+    if (!r.ok) throw new Error(`Upstream HTTP ${r.status}`);
+    return r.json();
+  });
+  try {
+    return await Promise.any(attempts);
+  } catch (agg) {
+    throw (agg && agg.errors && agg.errors[0]) || new Error('Upstream MP4 muxer unavailable');
   }
-  throw lastErr || new Error('Upstream MP4 muxer unavailable');
 }
 
 export default {
