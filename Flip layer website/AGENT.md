@@ -681,3 +681,31 @@ At the end of every prompt where changes are made:
     - Restarted local server daemon on port 3000 and verified `/__flippy_yt_ping` and `/__flippy_yt_dl` live.
 - **Learnings & Invariants**:
   - Apply the paid-only policy consistently across all Flippy versions (`v3` and `v4`) so both local server and client gates allow unrestricted free YouTube media.
+
+### [2026-11-01 16:10] — Port Zero-Popup & Anti-Ad Redirect Engine to Flippy v4
+- **Prompt / Request**: In Flippy V3, Can you add the feature where it blocks Pop ups to the Flippy V4?
+- **Files Modified**:
+  - `C:\Users\jeduc\Downloads\Flippy v4\index.html`
+  - `C:\Users\jeduc\Downloads\Flippy v4\ytconverter.js`
+  - `C:\Users\jeduc\Downloads\Flippy v4\server.js`
+  - `C:\Users\jeduc\Downloads\Flippy v4\worker.js`
+  - `Flip layer website/AGENT.md` & `AGENT.md`
+- **Adjustments Made**:
+  - **Eliminated Third-Party Fallback Embeds (`index.html`)**:
+    - Completely removed `<div class="ytc-embed-fallback-wrap" id="ytcEmbedFallbackWrap">` and `<iframe id="ytcEmbedFrame">`, eliminating third-party ad iframes and script execution vectors.
+    - Bumped script cache-buster to `ytconverter.js?v=5.5`.
+  - **Hardened Client URL & Download Boundaries (`ytconverter.js`)**:
+    - Added `isSafeDownloadHref(href)` strictly permitting `href.indexOf('blob:') === 0`.
+    - Added `isLikelyValidMediaChunk(uint8Chunk)` to inspect binary headers and reject HTML/JSON payloads (`<html`, `<script`, `{`, `[`).
+    - Hardened `triggerBrowserDownload(href, filename)` to block any non-blob URL, rejecting external HTTP links and preventing ad tab popups.
+    - Updated `handleSaveToPhotosClick()` to enforce `blob:` URLs and use Web Share API or clean direct downloads.
+    - Replaced all raw external fallback links with verified proxy streaming (`/__flippy_yt_stream`) buffered into in-memory blobs.
+    - Bound click handler on `#ytcDirectMp4Link` enforcing `isSafeDownloadHref(link.href)` to prevent accidental ad navigation.
+  - **Replaced Ad-Injecting Upstream Providers with Clean Stream Engines (`server.js` & `worker.js`)**:
+    - Removed `p.savenow.to` and `p.lbserver.xyz` which redirected to `hai8g.com/4/4683427`.
+    - Integrated native local `yt-dlp` + `ffmpeg` direct streaming on `/__flippy_yt_stream?id=...` with byte-range support (0 popups, 0 external ad servers).
+    - Ported AES-128-CBC SaveTube CDN + Cobalt v11 cloud fallback for ad-free failover.
+    - Added `isBlockedAdUrl()` rejecting ad redirect domains (`hai8g.com`, `savenow.to/ajax/ad/`, `short.link`).
+    - Added binary chunk validation in `openCleanUpstreamReader()` and `openVerifiedBinaryStream()`.
+- **Learnings & Invariants**:
+  - Never allow raw external URLs from third-party APIs to reach `<a download>` or `window.open`. All media downloads must be routed through verified in-memory `blob:` URLs created from inspected binary media streams.
