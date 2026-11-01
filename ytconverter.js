@@ -708,21 +708,257 @@
     }
   }
 
-  // Fallback when no local/edge proxy is running (100% popup-free & ad-free)
-  function activateStaticMp4Fallback(ytWatchUrl, muxFmt) {
-    var progText = document.getElementById('ytcProgressStatus');
-    var progFill = document.getElementById('ytcProgressBarFill');
+  var SAVETUBE_KEY_HEX = 'C5D58EF67A7584E4A29F6C35BBC4EB12';
+
+  function hexToBytes(hex) {
+    var bytes = new Uint8Array(hex.length / 2);
+    for (var i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+    }
+    return bytes;
+  }
+
+  function base64ToBytes(b64) {
+    var bin = atob(String(b64).replace(/\s+/g, ''));
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  async function decryptSaveTubeClient(encB64) {
+    var raw = base64ToBytes(encB64);
+    if (raw.byteLength <= 16) throw new Error('Invalid media cipher payload');
+    var iv = raw.subarray(0, 16);
+    var ciphertext = raw.subarray(16);
+    var cryptoKey = await window.crypto.subtle.importKey(
+      'raw',
+      hexToBytes(SAVETUBE_KEY_HEX),
+      { name: 'AES-CBC' },
+      false,
+      ['decrypt']
+    );
+    var decrypted = await window.crypto.subtle.decrypt({ name: 'AES-CBC', iv: iv }, cryptoKey, ciphertext);
+    return JSON.parse(new TextDecoder().decode(decrypted));
+  }
+
+  // Resolve media stream client-side via CORS-enabled Cobalt v11 & SaveTube engines (Zero Popups, Zero Ads)
+  async function resolveClientCloudMediaUrl(ytWatchUrl, muxFmt) {
+    var isAudio = ['mp3', 'm4a', 'aac', 'wav', 'flac', 'opus'].indexOf(muxFmt) !== -1;
+    var qMap = { '4k': '2160', '1440': '1440', '1080': '1080', '720': '720', '480': '480', '360': '360' };
+    var vq = qMap[muxFmt] || '1080';
+
+    var cobaltInstances = [
+      'https://rue-cobalt.xenon.zone',
+      'https://cobalt.xy2401.com'
+    ];
+
+    for (var i = 0; i < cobaltInstances.length; i++) {
+      try {
+        var base = cobaltInstances[i];
+        var bodyData = {
+          url: ytWatchUrl,
+          videoQuality: vq,
+          youtubeVideoCodec: 'h264'
+        };
+        if (isAudio) {
+          bodyData.downloadMode = 'audio';
+          bodyData.audioFormat = (muxFmt === 'wav' ? 'wav' : 'mp3');
+        }
+
+        var ctrl = new AbortController();
+        var timer = setTimeout(function() { ctrl.abort(); }, 12000);
+        var cRes = await fetch(base + '/', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(bodyData),
+          signal: ctrl.signal
+        });
+        clearTimeout(timer);
+
+        if (!cRes.ok) continue;
+        var cData = await cRes.json();
+        if (cData && (cData.status === 'tunnel' || cData.status === 'redirect') && cData.url) {
+          return {
+            streamUrl: cData.url,
+            provider: 'cobalt'
+          };
+        }
+      } catch (_) {}
+    }
+
+    try {
+      var cdnRes = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://media.savetube.vip/api/random-cdn'));
+      var cdnJson = await cdnRes.json();
+      var cdn = (cdnJson && cdnJson.cdn) || 'cdn403.savetube.vip';
+
+      var infoRes = await fetch('https://' + cdn + '/v2/info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: ytWatchUrl })
+      });
+      var infoJson = await infoRes.json();
+      if (infoJson && infoJson.data) {
+        var decoded = await decryptSaveTubeClient(infoJson.data);
+        if (decoded && decoded.key) {
+          var stQuality = isAudio ? '128' : (['720', '480', '360'].indexOf(muxFmt) !== -1 ? muxFmt : '1080');
+          var dlRes = await fetch('https://' + cdn + '/download', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              downloadType: isAudio ? 'audio' : 'video',
+              quality: stQuality,
+              key: decoded.key
+            })
+          });
+          var dlJson = await dlRes.json();
+          if (dlJson && dlJson.data && dlJson.data.downloadUrl) {
+            return {
+              streamUrl: dlJson.data.downloadUrl,
+              provider: 'savetube'
+            };
+          }
+        }
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
+  // Client-side Direct Stream Buffering & Download (Runs on GitHub Pages / Static hosting with Zero Popups & Zero Ads)
+  async function executeClientSideDirectDownload(ytWatchUrl, muxFmt, outExt, mimeType, finalFilename) {
     var progWrap = document.getElementById('ytcProgressWrap');
-    var dlBtn = document.getElementById('ytcDownloadBtn');
-    var dlLabel = document.getElementById('ytcDownloadBtnLabel');
+    var progFill = document.getElementById('ytcProgressBarFill');
+    var progText = document.getElementById('ytcProgressStatus');
 
     if (progWrap) progWrap.style.display = 'flex';
-    if (progFill) progFill.style.width = '0%';
-    if (dlBtn) dlBtn.disabled = false;
-    if (dlLabel) dlLabel.textContent = 'Download .MP4 Video';
+    if (progFill) progFill.style.width = '20%';
     if (progText) {
-      progText.textContent = 'Stream server offline. Please start "node server.js" on port 3000 for 100% ad-free & popup-free downloads.';
+      progText.textContent = 'GitHub Static Mode · Resolving media stream (0 popups, 0 ads)...';
     }
+
+    var streamResult = await resolveClientCloudMediaUrl(ytWatchUrl, muxFmt);
+    if (!streamResult || !streamResult.streamUrl) {
+      throw new Error('Cloud stream resolver could not fetch this video. Try 1080p MP4 or check video link.');
+    }
+
+    if (progFill) progFill.style.width = '45%';
+    if (progText) progText.textContent = 'Buffering .' + outExt.toUpperCase() + ' directly into memory...';
+
+    var streamUrl = streamResult.streamUrl;
+    var mediaRes = await fetch(streamUrl, { cache: 'no-store' });
+
+    if (!mediaRes.ok && streamResult.provider === 'savetube') {
+      mediaRes = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(streamUrl));
+    }
+
+    if (!mediaRes.ok) {
+      throw new Error('Could not download video stream (HTTP ' + mediaRes.status + ')');
+    }
+
+    var mediaBlob = null;
+    var contentLen = Number(mediaRes.headers.get('content-length')) || 0;
+
+    if (mediaRes.body && typeof mediaRes.body.getReader === 'function') {
+      var reader = mediaRes.body.getReader();
+      var chunks = [];
+      var received = 0;
+
+      while (true) {
+        var step = await reader.read();
+        if (step.done) break;
+        if (step.value && step.value.byteLength > 0) {
+          chunks.push(step.value);
+          received += step.value.byteLength;
+          var mb = (received / (1024 * 1024)).toFixed(1);
+          if (contentLen > 0) {
+            var dlPct = Math.min(100, Math.round((received / contentLen) * 100));
+            if (progFill) progFill.style.width = (45 + Math.round(dlPct * 0.5)) + '%';
+            if (progText) progText.textContent = 'Receiving .' + outExt.toUpperCase() + ': ' + mb + ' MB (' + dlPct + '%)...';
+          } else {
+            if (progText) progText.textContent = 'Receiving .' + outExt.toUpperCase() + ': ' + mb + ' MB...';
+          }
+        }
+      }
+
+      if (received > 1024 && chunks.length > 0 && isLikelyValidMediaChunk(chunks[0])) {
+        mediaBlob = new Blob(chunks, { type: mimeType });
+      }
+    } else {
+      var rawBlob = await mediaRes.blob();
+      if (rawBlob && rawBlob.size > 1024) {
+        var headBuf = new Uint8Array(await rawBlob.slice(0, 96).arrayBuffer());
+        if (isLikelyValidMediaChunk(headBuf)) {
+          mediaBlob = new Blob([rawBlob], { type: mimeType });
+        }
+      }
+    }
+
+    if (!mediaBlob) {
+      throw new Error('Stream verification failed — invalid media chunk. Please try again.');
+    }
+
+    if (progFill) progFill.style.width = '100%';
+
+    var readyBox = document.getElementById('ytcReadyMediaBox');
+    var readyFilenameEl = document.getElementById('ytcReadyFilename');
+    var player = document.getElementById('ytcPreviewPlayer');
+    var directLink = document.getElementById('ytcDirectMp4Link');
+    var savePhotosLabel = document.getElementById('ytcSaveToPhotosLabel');
+
+    var blobUrl = URL.createObjectURL(mediaBlob);
+    var fileObj = new File([mediaBlob], finalFilename, { type: mimeType, lastModified: Date.now() });
+
+    state.readyMedia.blobUrl = blobUrl;
+    state.readyMedia.directUrl = blobUrl;
+    state.readyMedia.file = fileObj;
+    state.readyMedia.filename = finalFilename;
+    if (readyFilenameEl) readyFilenameEl.textContent = finalFilename;
+
+    if (player) {
+      player.style.display = (outExt === 'mp4') ? 'block' : 'none';
+      if (outExt === 'mp4') player.src = blobUrl;
+    }
+    if (directLink) {
+      directLink.href = blobUrl;
+      directLink.download = finalFilename;
+      directLink.textContent = '⬇ Save .' + outExt.toUpperCase() + ' File';
+    }
+
+    var canShareFile = !!(state.readyMedia.file && navigator.canShare && navigator.canShare({ files: [state.readyMedia.file] }));
+    if (savePhotosLabel) {
+      if (isIOSDevice() || state.activePreset === 'iphone_photos') {
+        savePhotosLabel.textContent = canShareFile ? '📱 Save Video to iPhone Photos' : '⬇ Save .MP4 Video';
+      } else {
+        savePhotosLabel.textContent = canShareFile ? '📱 Share / Save to Photos' : '⬇ Save .' + outExt.toUpperCase() + ' Video';
+      }
+    }
+
+    if (readyBox) readyBox.style.display = 'flex';
+
+    var usePhotosShareFirst = (isIOSDevice() || state.activePreset === 'iphone_photos') && canShareFile;
+    if (usePhotosShareFirst) {
+      if (progText) progText.textContent = '✓ MP4 Ready! Tap "Save Video to iPhone Photos" below → choose "Save Video".';
+    } else {
+      if (triggerBrowserDownload(blobUrl, finalFilename)) {
+        if (progText) progText.textContent = '✓ Downloaded real .' + outExt.toUpperCase() + ' file (' + finalFilename + ')!';
+      } else {
+        if (progText) progText.textContent = '✓ Ready! Click "Save .' + outExt.toUpperCase() + ' File" below to download.';
+      }
+    }
+
+    state.history.unshift({
+      id: state.videoId,
+      title: state.meta.title,
+      author: state.meta.author_name,
+      res: muxFmt.toUpperCase(),
+      codec: state.settings.videoCodec.toUpperCase() + '/' + state.settings.audioCodec.toUpperCase(),
+      container: outExt.toUpperCase(),
+      timestamp: new Date().toLocaleTimeString()
+    });
+    renderHistory();
   }
 
   // Execute Real .MP4 Stream Conversion, Buffering & Download Pipeline (Zero Popups, Zero Redirects)
@@ -761,9 +997,8 @@
       var apiBase = await discoverBackendBase();
 
       if (apiBase === false || apiBase === null) {
-        activateStaticMp4Fallback(ytWatchUrl, muxFmt);
-        state.isDownloading = false;
-        updateUI();
+        // GitHub Static Mode / Serverless Client Mode (100% popup-free & ad-free)
+        await executeClientSideDirectDownload(ytWatchUrl, muxFmt, outExt, mimeType, finalFilename);
         return;
       }
 

@@ -709,3 +709,25 @@ At the end of every prompt:
     - Added binary chunk validation in `openCleanUpstreamReader()` and `openVerifiedBinaryStream()`.
 - **Learnings & Invariants**:
   - Never allow raw external URLs from third-party APIs to reach `<a download>` or `window.open`. All media downloads must be routed through verified in-memory `blob:` URLs created from inspected binary media streams.
+
+### [2026-11-01 16:32] — GitHub Static Mode: Client-Side Direct Cloud Stream Engine
+- **Prompt / Request**: Fix "Stream server offline. Please start 'node server.js' on port 3000..." error when hosting Flippy v4 statically on GitHub Pages instead of Cloudflare.
+- **Files Modified**:
+  - `C:\Users\jeduc\Downloads\Flippy v4\ytconverter.js`
+  - `C:\Users\jeduc\Downloads\Flippy v4\index.html`
+  - `Flip layer website/AGENT.md` & `AGENT.md`
+- **Adjustments Made**:
+  - **Root Cause Resolution**:
+    - GitHub Pages serves pure static assets over HTTPS and cannot run `server.js` or `worker.js`.
+    - `discoverBackendBase()` returned `false` on GitHub Pages because same-origin `/__flippy_yt_ping` is 404 and `http://localhost:3000` is blocked by browser Mixed Content rules (HTTPS -> HTTP).
+    - The old `activateStaticMp4Fallback()` aborted the download and told the user to start `node server.js` on port 3000.
+  - **Direct Client-Side Cloud Streaming Pipeline (`ytconverter.js`)**:
+    - Replaced `activateStaticMp4Fallback` with `executeClientSideDirectDownload` and `resolveClientCloudMediaUrl`.
+    - Implemented client-side CORS stream resolution via Cobalt v11 (`https://rue-cobalt.xenon.zone/`) and SaveTube CDN (via WebCrypto AES-128-CBC with `crypto.subtle`).
+    - Streamed media bytes directly into in-memory `Blob` chunks with live MB/percentage progress bar.
+    - Verified binary media headers via `isLikelyValidMediaChunk(chunks[0])`, discarding any invalid HTML or error payloads.
+    - Created verified `blob:` URLs, wired into the preview player, iOS "Save to Photos" button, and `#ytcDirectMp4Link`, and triggered immediate file download with zero popups and zero redirects.
+  - **Cache Busting**:
+    - Incremented script reference in `index.html` to `ytconverter.js?v=5.6`.
+- **Learnings & Invariants**:
+  - When hosted statically on platforms like GitHub Pages, the client application must remain 100% self-sufficient. Fall back smoothly to client-side CORS stream resolvers rather than failing when local or same-origin backend probes return false.
