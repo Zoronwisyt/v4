@@ -165,13 +165,6 @@
           </svg>
           <span>Media Converter</span>
         </button>
-        <button class="nav-tab" data-tab="xmlglsl" id="navTabXmlGlsl" type="button">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="16 18 22 12 16 6"/>
-            <polyline points="8 6 2 12 8 18"/>
-          </svg>
-          <span>XML Preview GLSL</span>
-        </button>
         <button class="nav-tab" data-tab="realpreview" id="navTabRealPreview" type="button">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="12 2 2 7 12 12 22 7 12 2"/>
@@ -1421,347 +1414,6 @@
       </div>
     </section>
 
-    <!-- Workspace 3: XML Preview GLSL (Native AM XML GLSL & 3D Keyframe Transform Studio) -->
-    <section class="panel xmlglsl-panel" id="xmlglsl-panel" style="display: none; grid-column: 1 / -1;">
-      <div class="panel-header">
-        <h2>
-          <span class="ph-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="16 18 22 12 16 6"/>
-              <polyline points="8 6 2 12 8 18"/>
-            </svg>
-          </span>
-          <span class="ph-text">XML Preview GLSL<small>Alight Motion Native GLSL Shader Engine · 3D Transforms & Keyframed Effects</small></span>
-        </h2>
-        <div class="xmlglsl-header-actions">
-          <div class="pill-group" id="xmlglslCameraModeGroup">
-            <button class="ph-btn active" id="xmlglslCamFrontBtn" type="button" title="Direct Front View (Exact Alight Motion output)">Front View</button>
-            <button class="ph-btn" id="xmlglslCamOrbitBtn" type="button" title="3D Perspective Orbit (Drag right-click to spin around 3D space)">3D Orbit</button>
-          </div>
-          <div class="rp-color-ctrls-group">
-            <label class="rp-color-label" title="Change Background Color of Preview Stage">
-              <span>BG</span>
-              <input type="color" id="xmlglslBgColorPicker" value="#0a0a0e">
-            </label>
-          </div>
-          <select class="ph-btn" id="xmlglslResSelect" style="padding: 4px 8px; font-family: var(--font-mono); font-size: 11px;">
-            <option value="1080x1350" selected>4:5 (1080 × 1350)</option>
-            <option value="1080x1920">9:16 (1080 × 1920)</option>
-            <option value="1080x1080">1:1 (1080 × 1080)</option>
-            <option value="1920x1080">16:9 (1920 × 1080)</option>
-          </select>
-          <label class="ph-btn" style="cursor: pointer;" title="Import Alight Motion XML project file">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <span>Import XML</span>
-            <input type="file" id="xmlglslImportXmlInput" accept=".xml" style="display: none;">
-          </label>
-          <button class="ph-btn ph-btn-primary" id="xmlglslExportXmlBtn" type="button" title="Export Alight Motion XML with 3D keyframe transforms and GLSL effects">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            <span>Export AM XML</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="xmlglsl-layout">
-        <!-- Column 1: Rectangle & 3D Transform Inspector -->
-        <div class="xmlglsl-transform-card">
-          <div class="xmlglsl-card-title">
-            <span>Rectangle &amp; 3D Transform</span>
-            <span class="tag">Transform</span>
-          </div>
-
-          <!-- Fill & Dimensions -->
-          <div class="xg-prop-group">
-            <div class="xg-prop-group-title">
-              <span>Geometry &amp; Fill</span>
-            </div>
-            <div class="xg-prop-row">
-              <span class="xg-prop-label">Size (W × H)</span>
-              <div class="xg-dual-ctrl">
-                <input type="number" id="xgWidth" min="10" max="4000" step="10" value="600" title="Width (px)">
-                <input type="number" id="xgHeight" min="10" max="4000" step="10" value="750" title="Height (px)">
-              </div>
-            </div>
-            <div class="xg-prop-row">
-              <span class="xg-prop-label">Fill Pattern</span>
-              <select id="xgFillType" class="ph-btn" style="flex: 1; max-width: 210px; font-size: 11px; padding: 4px;">
-                <option value="solid" selected>Solid Color</option>
-                <option value="grid">Cyber Grid Pattern</option>
-                <option value="checker">Checkerboard Grid</option>
-              </select>
-            </div>
-            <div class="xg-prop-row">
-              <span class="xg-prop-label">Base Color</span>
-              <div class="rp-color-ctrls-group" style="flex: 1; max-width: 210px; justify-content: flex-end;">
-                <input type="color" id="xgFillColor" value="#e05336">
-              </div>
-            </div>
-          </div>
-
-          <!-- Translation (Position X, Y, Z-Axis) -->
-          <div class="xg-prop-group">
-            <div class="xg-prop-group-title">
-              <span>Position &amp; Z-Depth</span>
-            </div>
-            <div class="xg-prop-row">
-              <div class="xg-prop-label-wrap">
-                <button type="button" class="xg-kf-btn" data-prop="x" title="Keyframe Pos X">✦</button>
-                <span class="xg-prop-label">Pos X</span>
-              </div>
-              <div class="xg-dual-ctrl">
-                <input type="range" id="xgPosXSlider" min="-1200" max="1200" step="1" value="0">
-                <input type="number" id="xgPosX" step="1" value="0">
-              </div>
-            </div>
-            <div class="xg-prop-row">
-              <div class="xg-prop-label-wrap">
-                <button type="button" class="xg-kf-btn" data-prop="y" title="Keyframe Pos Y">✦</button>
-                <span class="xg-prop-label">Pos Y</span>
-              </div>
-              <div class="xg-dual-ctrl">
-                <input type="range" id="xgPosYSlider" min="-1200" max="1200" step="1" value="0">
-                <input type="number" id="xgPosY" step="1" value="0">
-              </div>
-            </div>
-            <div class="xg-prop-row">
-              <div class="xg-prop-label-wrap">
-                <button type="button" class="xg-kf-btn" data-prop="z" title="Keyframe Z-Axis Depth">✦</button>
-                <span class="xg-prop-label">Z-Axis Depth</span>
-              </div>
-              <div class="xg-dual-ctrl">
-                <input type="range" id="xgPosZSlider" min="-2500" max="2500" step="10" value="0">
-                <input type="number" id="xgPosZ" step="10" value="0">
-              </div>
-            </div>
-          </div>
-
-          <!-- Rotation (3D Euler Angles) -->
-          <div class="xg-prop-group">
-            <div class="xg-prop-group-title">
-              <span>3D Euler Rotation</span>
-            </div>
-            <div class="xg-prop-row">
-              <div class="xg-prop-label-wrap">
-                <button type="button" class="xg-kf-btn" data-prop="rotZ" title="Keyframe 2D Angle (Rot Z)">✦</button>
-                <span class="xg-prop-label">Rot Z (Angle)</span>
-              </div>
-              <div class="xg-dual-ctrl">
-                <input type="range" id="xgRotZSlider" min="-360" max="360" step="1" value="0">
-                <input type="number" id="xgRotZ" step="1" value="0">
-              </div>
-            </div>
-            <div class="xg-prop-row">
-              <div class="xg-prop-label-wrap">
-                <button type="button" class="xg-kf-btn" data-prop="rotX" title="Keyframe 3D Tilt (Rot X)">✦</button>
-                <span class="xg-prop-label">Rot X (Tilt)</span>
-              </div>
-              <div class="xg-dual-ctrl">
-                <input type="range" id="xgRotXSlider" min="-180" max="180" step="1" value="0">
-                <input type="number" id="xgRotX" step="1" value="0">
-              </div>
-            </div>
-            <div class="xg-prop-row">
-              <div class="xg-prop-label-wrap">
-                <button type="button" class="xg-kf-btn" data-prop="rotY" title="Keyframe 3D Spin (Rot Y)">✦</button>
-                <span class="xg-prop-label">Rot Y (Spin)</span>
-              </div>
-              <div class="xg-dual-ctrl">
-                <input type="range" id="xgRotYSlider" min="-180" max="180" step="1" value="0">
-                <input type="number" id="xgRotY" step="1" value="0">
-              </div>
-            </div>
-          </div>
-
-          <!-- Scale & Opacity -->
-          <div class="xg-prop-group">
-            <div class="xg-prop-group-title">
-              <span>Scale &amp; Opacity</span>
-            </div>
-            <div class="xg-prop-row">
-              <div class="xg-prop-label-wrap">
-                <button type="button" class="xg-kf-btn" data-prop="scale" title="Keyframe Uniform Scale">✦</button>
-                <span class="xg-prop-label">Scale</span>
-              </div>
-              <div class="xg-dual-ctrl">
-                <input type="range" id="xgScaleSlider" min="0.1" max="4.0" step="0.05" value="1.0">
-                <input type="number" id="xgScale" step="0.05" value="1.00">
-              </div>
-            </div>
-            <div class="xg-prop-row">
-              <div class="xg-prop-label-wrap">
-                <button type="button" class="xg-kf-btn" data-prop="scaleX" title="Keyframe Scale X">✦</button>
-                <span class="xg-prop-label">Scale X</span>
-              </div>
-              <div class="xg-dual-ctrl">
-                <input type="range" id="xgScaleXSlider" min="0.1" max="4.0" step="0.05" value="1.0">
-                <input type="number" id="xgScaleX" step="0.05" value="1.00">
-              </div>
-            </div>
-            <div class="xg-prop-row">
-              <div class="xg-prop-label-wrap">
-                <button type="button" class="xg-kf-btn" data-prop="scaleY" title="Keyframe Scale Y">✦</button>
-                <span class="xg-prop-label">Scale Y</span>
-              </div>
-              <div class="xg-dual-ctrl">
-                <input type="range" id="xgScaleYSlider" min="0.1" max="4.0" step="0.05" value="1.0">
-                <input type="number" id="xgScaleY" step="0.05" value="1.00">
-              </div>
-            </div>
-            <div class="xg-prop-row">
-              <div class="xg-prop-label-wrap">
-                <button type="button" class="xg-kf-btn" data-prop="opacity" title="Keyframe Opacity">✦</button>
-                <span class="xg-prop-label">Opacity %</span>
-              </div>
-              <div class="xg-dual-ctrl">
-                <input type="range" id="xgOpacitySlider" min="0" max="100" step="1" value="100">
-                <input type="number" id="xgOpacity" min="0" max="100" step="1" value="100">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Column 2: WebGL Stage & Timeline -->
-        <div class="xmlglsl-stage-card">
-          <div class="xmlglsl-card-title">
-            <span>GLSL Multi-Pass Canvas Stage</span>
-            <span class="tag">WebGL GLSL</span>
-          </div>
-
-          <!-- WebGL Stage Wrap -->
-          <div class="xmlglsl-stage-wrap" id="xmlglslStageWrap">
-            <canvas id="glslXmlCanvas"></canvas>
-            <!-- Telemetry Overlay -->
-            <div class="xmlglsl-telemetry-hud">
-              <div class="xmlglsl-hud-chip"><span id="xmlglslFps">60 FPS</span></div>
-              <div class="xmlglsl-hud-chip"><span id="xmlglslRes">1080 × 1350</span></div>
-              <div class="xmlglsl-hud-chip"><span id="xmlglslActiveEffectsCount">1 FX</span></div>
-              <div class="xmlglsl-hud-chip"><b id="xmlglslZReadout">Z: 0px</b></div>
-            </div>
-          </div>
-
-          <!-- Timeline & Transport Controls -->
-          <div class="xmlglsl-timeline">
-            <div class="xmlglsl-timeline-transport">
-              <div class="xmlglsl-transport-btns">
-                <button class="ph-btn" id="xmlglslStopBtn" type="button" title="Stop &amp; rewind to 0s">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
-                </button>
-                <button class="ph-btn ph-btn-primary" id="xmlglslPlayBtn" type="button" title="Play or Pause (Spacebar)">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                </button>
-                <button class="ph-btn" id="xmlglslStepBackBtn" type="button" title="Step back 1 frame">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-                </button>
-                <button class="ph-btn" id="xmlglslStepFwdBtn" type="button" title="Step forward 1 frame">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-                </button>
-                <button class="ph-btn" id="xmlglslPrevKfBtn" type="button" title="Jump to previous keyframe">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
-                </button>
-                <button class="ph-btn" id="xmlglslNextKfBtn" type="button" title="Jump to next keyframe">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
-                </button>
-                <button class="ph-btn" id="xmlglslAddKfBtn" type="button" title="Add / remove keyframe at current playhead">
-                  <span style="color: var(--brass); font-weight: bold;">◆</span>
-                  <span>Keyframe</span>
-                </button>
-              </div>
-
-              <div class="xmlglsl-time-readout" id="xmlglslTimeReadout">0.00s / 2.00s (0/120f)</div>
-
-              <div style="display: flex; gap: 6px; align-items: center;">
-                <select class="ph-btn" id="xmlglslDurationSelect" style="font-family: var(--font-mono); font-size: 11px; padding: 4px 6px;" title="Project Duration">
-                  <option value="1.0">1.0s</option>
-                  <option value="2.0" selected>2.0s</option>
-                  <option value="3.0">3.0s</option>
-                  <option value="5.0">5.0s</option>
-                  <option value="10.0">10.0s</option>
-                </select>
-                <select class="ph-btn" id="xmlglslEasingSelect" style="font-family: var(--font-mono); font-size: 11px; padding: 4px 6px;" title="Active Keyframe Easing Curve">
-                  <option value="hermite" selected>AM Hermite (0.4, 0.0, 0.2, 1.0)</option>
-                  <option value="ease-in-out">Ease In-Out</option>
-                  <option value="ease-in">Ease In</option>
-                  <option value="ease-out">Ease Out</option>
-                  <option value="linear">Linear</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Scrubber & Keyframe Ruler -->
-            <div class="xmlglsl-timeline-ruler-wrap">
-              <div class="xmlglsl-timeline-bar" id="xmlglslTimelineBar">
-                <div class="xmlglsl-progress-fill" id="xmlglslProgressFill" style="width: 0%;"></div>
-                <div class="xmlglsl-playhead" id="xmlglslPlayhead" style="left: 0%;"></div>
-              </div>
-              <div class="xmlglsl-keyframe-ruler" id="xmlglslKeyframeRuler" title="Click diamond to jump to keyframe"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Column 3: Alight Motion GLSL Effects Library & Effect Stack -->
-        <div class="xmlglsl-effects-card">
-          <div class="xmlglsl-card-title">
-            <span>Alight Motion GLSL Effects</span>
-            <span class="tag">274 Shaders</span>
-          </div>
-
-          <!-- Effects Browser & Add -->
-          <div class="xg-effects-browser">
-            <div style="display: flex; gap: 6px;">
-              <select id="xmlglslCategoryFilter" class="ph-btn" style="flex: 1; font-size: 11px; padding: 5px;">
-                <option value="all" selected>All Categories (274)</option>
-                <option value="Distortion &amp; Warp">Distortion &amp; Warp</option>
-                <option value="Blur">Blur</option>
-                <option value="Color &amp; Light">Color &amp; Light</option>
-                <option value="Drawing &amp; Edge">Drawing &amp; Edge</option>
-                <option value="Matte &amp; Mask">Matte &amp; Mask</option>
-                <option value="Procedural">Procedural</option>
-                <option value="3D">3D</option>
-                <option value="Transform">Transform</option>
-                <option value="Repeat">Repeat</option>
-                <option value="Other">Other / Blend</option>
-              </select>
-              <input type="text" id="xmlglslSearchEffect" placeholder="Search effects..." style="flex: 1; background: var(--bg-panel); border: 1px solid var(--line-mid); color: var(--text-1); font-size: 11px; padding: 5px 8px; border-radius: var(--r-xs);">
-            </div>
-
-            <div style="display: flex; gap: 6px;">
-              <select id="xmlglslEffectSelect" class="ph-btn" style="flex: 1; font-size: 11px; padding: 5px; text-overflow: ellipsis;"></select>
-              <button class="ph-btn ph-btn-primary" id="xmlglslAddEffectBtn" type="button" style="white-space: nowrap;">+ Add Effect</button>
-            </div>
-
-            <!-- Quick Add Pills -->
-            <div class="xg-quick-pills">
-              <span class="xg-quick-pill" data-eff-id="com.alightcreative.effects.bendwarp">Bend</span>
-              <span class="xg-quick-pill" data-eff-id="com.alightcreative.effects.tile">Tiles</span>
-              <span class="xg-quick-pill" data-eff-id="com.alightcreative.effects.motionblur">Motion Blur</span>
-              <span class="xg-quick-pill" data-eff-id="com.alightcreative.effects.wipe2">Wipe</span>
-              <span class="xg-quick-pill" data-eff-id="com.alightcreative.effects.mirror">Mirror</span>
-              <span class="xg-quick-pill" data-eff-id="com.alightcreative.effects.darkglow">Dark Glow</span>
-              <span class="xg-quick-pill" data-eff-id="com.alightcreative.effects.rgb-mixer">RGB Mixer</span>
-              <span class="xg-quick-pill" data-eff-id="com.alightcreative.effects.wavewarp2">Wave Warp</span>
-              <span class="xg-quick-pill" data-eff-id="com.alightcreative.effects.chromakey">Chroma</span>
-            </div>
-          </div>
-
-          <!-- Applied Effects Stack -->
-          <div class="xg-applied-effects-list" id="xmlglslAppliedEffectsList"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Modal: Compiled GLSL Fragment Shader Inspector -->
-    <div class="xmlglsl-modal" id="xmlglslCodeModal">
-      <div class="xmlglsl-modal-content">
-        <div class="xmlglsl-modal-header">
-          <h3 id="xmlglslModalTitle" style="font-size: 13px; font-weight: 600; color: var(--text-1);">GLSL Fragment Shader Code</h3>
-          <button class="xg-btn-icon" id="xmlglslModalClose" type="button" style="padding: 4px 8px;">✕</button>
-        </div>
-        <div class="xmlglsl-modal-body">
-          <pre><code id="xmlglslModalCode">// Loading shader...</code></pre>
-        </div>
-      </div>
-    </div>
-
     <!-- Workspace: Real Preview (Native GLSL / WebGL 3D Engine) -->
     <section class="panel realpreview-panel" id="realpreview-panel" style="display: none; grid-column: 1 / -1;">
       <div class="panel-header">
@@ -1913,17 +1565,17 @@
             <button class="ph-btn ph-btn-primary" id="ytcAnalyzeBtn" type="button" style="white-space: nowrap; padding: 0 14px;">Analyze Link</button>
           </div>
 
-          <!-- Quick Test Presets to Verify Free Streams (incl. Anime Twixtors) vs Paid Store Videos -->
+          <!-- Quick Test Presets (All YouTube Streams Supported) -->
           <div class="xg-prop-group">
             <div class="xg-prop-group-title">
-              <span>Stream Verification Presets</span>
-              <span style="font-size: 10px; color: var(--text-3);">Instant Gate Check</span>
+              <span>Stream Quick Presets</span>
+              <span style="font-size: 10px; color: var(--text-3);">Instant Sample Check</span>
             </div>
             <div class="xg-quick-pills">
-              <button type="button" class="xg-quick-pill ytc-test-preset" data-url="https://www.youtube.com/watch?v=aqz-KE-bpKQ" data-title="Big Buck Bunny 60fps 4K - Blender Open Movie" data-author="Blender Foundation">✓ Open 4K60 Sample (Allowed)</button>
-              <button type="button" class="xg-quick-pill ytc-test-preset" data-url="https://www.youtube.com/watch?v=jNQXAC9IVRw" data-title="Gojo vs Sukuna 4K 60FPS Anime Twixtor Scenepack" data-author="Twixtor Vault">✓ Anime Twixtor 4K60 (Allowed)</button>
-              <button type="button" class="xg-quick-pill ytc-test-preset" data-url="https://www.youtube.com/watch?v=aqz-KE-bpKQ" data-title="Jujutsu Kaisen Season 2 - Shibuya Clip [1080p60]" data-author="Crunchyroll">✓ Anime Channel Clip (Allowed)</button>
-              <button type="button" class="xg-quick-pill ytc-test-preset" data-url="https://www.youtube.com/watch?v=paid_movie1" data-title="Spider-Man: Across the Spider-Verse [Buy or Rent]" data-author="YouTube Movies &amp; TV">✕ Paid Store Movie (Requires Purchase)</button>
+              <button type="button" class="xg-quick-pill ytc-test-preset" data-url="https://www.youtube.com/watch?v=aqz-KE-bpKQ" data-title="Big Buck Bunny 60fps 4K - Blender Open Movie" data-author="Blender Foundation">✓ Open 4K60 Sample</button>
+              <button type="button" class="xg-quick-pill ytc-test-preset" data-url="https://www.youtube.com/watch?v=jNQXAC9IVRw" data-title="Gojo vs Sukuna 4K 60FPS Anime Twixtor Scenepack" data-author="Twixtor Vault">✓ Anime Twixtor 4K60</button>
+              <button type="button" class="xg-quick-pill ytc-test-preset" data-url="https://www.youtube.com/watch?v=aqz-KE-bpKQ" data-title="Jujutsu Kaisen Season 2 - Shibuya Clip [1080p60]" data-author="Crunchyroll">✓ Anime Channel Clip</button>
+              <button type="button" class="xg-quick-pill ytc-test-preset" data-url="https://www.youtube.com/watch?v=paid_movie1" data-title="Spider-Man: Across the Spider-Verse [Buy or Rent]" data-author="YouTube Movies &amp; TV">✓ Movie / Store Video (Unlocked)</button>
             </div>
           </div>
 
@@ -1938,11 +1590,11 @@
             </div>
           </div>
 
-          <!-- Live Paywall / Purchase Gate Readout -->
+          <!-- Live Stream Status Readout -->
           <div class="ytc-compliance-box">
             <span class="ytc-compliance-badge idle" id="ytcComplianceBadge">AWAITING LINK</span>
-            <div class="ytc-compliance-reason" id="ytcComplianceReason">Paste any YouTube link (including anime twixtors, edits &amp; clips) to verify stream availability.</div>
-            <div class="ytc-compliance-rule" id="ytcComplianceRule">POLICY: FREE YOUTUBE STREAMS ALLOWED · PAID / BUY-OR-RENT VIDEOS BLOCKED</div>
+            <div class="ytc-compliance-reason" id="ytcComplianceReason">Paste any YouTube link (paid, rentals, movies, anime twixtors &amp; clips supported).</div>
+            <div class="ytc-compliance-rule" id="ytcComplianceRule">POLICY: ALL YOUTUBE VIDEOS UNRESTRICTED · EXPORT READY</div>
           </div>
         </div>
 
@@ -2120,25 +1772,21 @@
           </details>
         </div>
 
-        <!-- Column 3: Paid / Purchase-Required Filter & Session Queue -->
+        <!-- Column 3: Stream Queue & Preset Manager -->
         <div class="ytc-card">
           <div class="xmlglsl-card-title">
-            <span>03 · Purchase Gate &amp; Session Queue</span>
-            <span class="tag">Paywall Check</span>
+            <span>03 · Conversion Stream Queue</span>
+            <span class="tag">Active Queue</span>
           </div>
 
           <div class="xg-prop-group">
             <div class="xg-prop-group-title">
-              <span>Paid / Buy-or-Rent Storefronts Blocked</span>
+              <span>Universal Stream Importer</span>
             </div>
             <div style="font-size: 11px; color: var(--text-2); line-height: 1.4;">
-              All free YouTube videos — including anime twixtors, scenepacks, AMVs, and episodes — are unlocked. Downloads are only blocked when a link requires purchase or rental on YouTube.
+              All YouTube media — paid, rentals, movies, anime twixtors, scenepacks, and edits — export directly to .MP4 with 0 popups and 0 redirects.
             </div>
-            <div class="ytc-blocked-tags" id="ytcBlockedChannelsTags"></div>
-            <div style="display: flex; gap: 6px; margin-top: 4px;">
-              <input type="text" id="ytcCustomBlockedInput" placeholder="Add custom blocked channel..." style="flex: 1; background: var(--bg-panel); border: 1px solid var(--line-mid); color: var(--text-1); font-size: 11px; padding: 5px 8px; border-radius: var(--r-xs);">
-              <button class="ph-btn" id="ytcAddBlockedChannelBtn" type="button" style="font-size: 11px; padding: 4px 10px;">+ Block</button>
-            </div>
+            <div class="ytc-blocked-tags" id="ytcBlockedChannelsTags" style="display: none;"></div>
           </div>
 
           <div class="xg-prop-group" style="flex: 1;">
@@ -2430,11 +2078,6 @@
       <div class="mobile-tab-inner" id="mobileConverterSlot"></div>
     </div>
 
-    <!-- Tab 2.5: XML Preview GLSL Tab -->
-    <div class="mobile-tab-content" id="mobileTabXmlGlsl">
-      <div class="mobile-tab-inner" id="mobileXmlGlslSlot"></div>
-    </div>
-
     <!-- Tab 3: Real Preview (Native GLSL / WebGL 3D Engine) -->
     <div class="mobile-tab-content" id="mobileTabRealPreview">
       <div class="mobile-tab-inner" id="mobileRealPreviewSlot"></div>
@@ -2505,13 +2148,6 @@
         </svg>
         <span>Media Converter</span>
       </button>
-      <button class="mobile-tab" data-tab="mobileTabXmlGlsl" type="button">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="16 18 22 12 16 6"/>
-          <polyline points="8 6 2 12 8 18"/>
-        </svg>
-        <span>XML GLSL</span>
-      </button>
       <button class="mobile-tab" data-tab="mobileTabRealPreview" type="button">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="12 2 2 7 12 12 22 7 12 2"/>
@@ -2531,9 +2167,8 @@
   </div>
 
   <script src="am_effects_db.js"></script>
-  <script src="xmlglsl.js"></script>
-  <script src="ytconverter.js?v=5.6"></script>
-  <script src="app.js?v=4.9"></script>
+  <script src="ytconverter.js?v=5.8"></script>
+  <script src="app.js?v=5.0"></script>
   <script src="fx.js?v=4.9"></script>
 </body>
 </html>

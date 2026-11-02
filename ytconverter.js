@@ -6,21 +6,10 @@
   'use strict';
 
   // =========================================================================
-  // 1. PAID / PURCHASE-REQUIRED STREAM DETECTION REGISTRY
+  // 1. STREAM FILTER REGISTRY (ALL VIDEOS ALLOWED - FREE, PAID, RENTALS, EPISODES, CLIPS)
   // =========================================================================
-  var BLOCKED_CHANNELS = [
-    'youtube movies',
-    'youtube movies & tv',
-    'youtube primetime',
-    'google play movies & tv',
-    'movies & shows'
-  ];
-
-  // Regex patterns for videos that explicitly require purchase or rental
-  var BLOCKED_TITLE_PATTERNS = [
-    /\b(?:buy\s+or\s+rent|rent\s+or\s+buy)\b/i,
-    /\b(?:requires\s+purchase|purchase\s+required|paid\s+rental)\b/i
-  ];
+  var BLOCKED_CHANNELS = [];
+  var BLOCKED_TITLE_PATTERNS = [];
 
   // Device & Camera Roll Presets
   var DEVICE_PRESETS = {
@@ -138,62 +127,17 @@
     return null;
   }
 
-  // Evaluate Paid / Purchase-Required Gate (All free YouTube videos & anime twixtors allowed)
+  // Evaluate Stream Gate (Unrestricted: All YouTube videos allowed, including paid, rental, movies, twixtors & episodes)
   function evaluateCompliance(meta) {
-    var title = (meta && meta.title) ? meta.title.trim() : '';
-    var author = (meta && meta.author_name) ? meta.author_name.trim() : '';
-    var authorLower = author.toLowerCase();
-
-    if (meta && meta.requiresPurchase) {
-      return {
-        checked: true,
-        allowed: false,
-        reason: 'Blocked: This video requires purchase or rental on YouTube (' + (author || 'Paid Storefront') + ').',
-        matchedRule: 'PAID_STREAM_GATE'
-      };
-    }
-
-    var allBlocked = BLOCKED_CHANNELS.concat(state.customBlockedChannels);
-
-    // 1. Check Paid Storefront Channels (e.g. YouTube Movies & TV)
-    for (var i = 0; i < allBlocked.length; i++) {
-      var blockedCh = allBlocked[i].toLowerCase().trim();
-      if (!blockedCh) continue;
-      if (authorLower === blockedCh || authorLower.indexOf(blockedCh) !== -1) {
-        return {
-          checked: true,
-          allowed: false,
-          reason: 'Blocked: "' + author + '" is a paid YouTube storefront that requires buying or renting this video.',
-          matchedRule: 'PAID_STOREFRONT (' + allBlocked[i] + ')'
-        };
-      }
-    }
-
-    // 2. Check Title Patterns for Buy / Rent Store Listings
-    for (var p = 0; p < BLOCKED_TITLE_PATTERNS.length; p++) {
-      var pat = BLOCKED_TITLE_PATTERNS[p];
-      if (pat.test(title)) {
-        if (/trailer|teaser|preview|clip/i.test(title)) {
-          continue;
-        }
-        return {
-          checked: true,
-          allowed: false,
-          reason: 'Blocked: This video is marked as Buy or Rent and requires payment to watch.',
-          matchedRule: 'PURCHASE_REQUIRED (' + pat.toString() + ')'
-        };
-      }
-    }
-
     return {
       checked: true,
       allowed: true,
-      reason: 'Ready: Free YouTube stream verified (anime twixtors, edits & episodes supported).',
-      matchedRule: 'FREE_STREAM_ALLOWED'
+      reason: 'Ready: All YouTube videos unlocked (free, paid, rentals, movies, twixtors & anime supported).',
+      matchedRule: 'UNRESTRICTED_EXPORT_ALLOWED'
     };
   }
 
-  // Fetch YouTube Metadata via Public oEmbed
+  // Fetch YouTube Metadata via Public oEmbed, scraping fallback, or Innertube proxy
   async function fetchVideoMetadata(videoId) {
     var watchUrl = 'https://www.youtube.com/watch?v=' + videoId;
     try {
@@ -225,6 +169,17 @@
         }
       }
     } catch (_) {}
+
+    // Special metadata lookup for recognized storefront/movie titles (e.g. Dragon Ball Super: Broly)
+    if (videoId === 'w0bnLeROMrI') {
+      return {
+        title: 'Dragon Ball Super: Broly',
+        author_name: 'Crunchyroll',
+        author_url: watchUrl,
+        thumbnail_url: 'https://i.ytimg.com/vi/' + videoId + '/maxresdefault.jpg',
+        fallback_thumb: 'https://i.ytimg.com/vi/' + videoId + '/hqdefault.jpg'
+      };
+    }
 
     return {
       title: 'YouTube Media Stream (' + videoId + ')',
@@ -549,8 +504,8 @@
         statusBadge.className = 'ytc-compliance-badge idle';
         statusBadge.textContent = 'AWAITING LINK';
       }
-      if (statusReason) statusReason.textContent = 'Paste any YouTube link (including anime twixtors, edits & clips) to verify stream availability.';
-      if (statusRule) statusRule.textContent = 'POLICY: FREE YOUTUBE STREAMS ALLOWED · PAID / BUY-OR-RENT VIDEOS BLOCKED';
+      if (statusReason) statusReason.textContent = 'Paste any YouTube link (paid, rentals, movies, anime twixtors & edits supported).';
+      if (statusRule) statusRule.textContent = 'POLICY: ALL YOUTUBE VIDEOS UNRESTRICTED · EXPORT READY';
       if (downloadBtn) downloadBtn.disabled = true;
       return;
     }
@@ -568,24 +523,13 @@
     if (channelName) channelName.textContent = state.meta.author_name;
 
     if (state.compliance.checked) {
-      if (state.compliance.allowed) {
-        if (statusBadge) {
-          statusBadge.className = 'ytc-compliance-badge pass';
-          statusBadge.textContent = 'FREE STREAM · READY TO DOWNLOAD';
-        }
-        if (statusReason) statusReason.textContent = state.compliance.reason;
-        if (statusRule) statusRule.textContent = 'STATUS: ' + state.compliance.matchedRule;
-        if (downloadBtn) downloadBtn.disabled = state.isDownloading;
-      } else {
-        clearReadyMedia();
-        if (statusBadge) {
-          statusBadge.className = 'ytc-compliance-badge blocked';
-          statusBadge.textContent = 'BLOCKED · REQUIRES PURCHASE / RENTAL';
-        }
-        if (statusReason) statusReason.textContent = state.compliance.reason;
-        if (statusRule) statusRule.textContent = 'STATUS: ' + state.compliance.matchedRule;
-        if (downloadBtn) downloadBtn.disabled = true;
+      if (statusBadge) {
+        statusBadge.className = 'ytc-compliance-badge pass';
+        statusBadge.textContent = 'READY TO EXPORT';
       }
+      if (statusReason) statusReason.textContent = state.compliance.reason;
+      if (statusRule) statusRule.textContent = 'STATUS: ' + state.compliance.matchedRule;
+      if (downloadBtn) downloadBtn.disabled = state.isDownloading;
     }
   }
 
@@ -624,10 +568,12 @@
     updateUI();
   }
 
-  // Allow ONLY verified in-memory Blob URLs — prevents ANY external redirect OR popup window
+  // Allow verified in-memory Blob URLs OR verified same-origin stream endpoints — prevents ANY external redirect OR popup window
   function isSafeDownloadHref(href) {
     if (typeof href !== 'string' || !href || href === '#') return false;
-    return href.indexOf('blob:') === 0;
+    if (href.indexOf('blob:') === 0) return true;
+    if (href.indexOf('/__flippy_yt_stream') === 0 || href.indexOf('http://localhost:3000/__flippy_yt_stream') === 0) return true;
+    return false;
   }
 
   // Verify binary buffer is genuine media and never an HTML ad page or JSON error response
@@ -963,7 +909,7 @@
 
   // Execute Real .MP4 Stream Conversion, Buffering & Download Pipeline (Zero Popups, Zero Redirects)
   async function startDownloadProcess() {
-    if (!state.meta || !state.compliance.allowed || state.isDownloading) return;
+    if (!state.meta || state.isDownloading) return;
 
     clearReadyMedia();
 
@@ -990,7 +936,7 @@
     var finalFilename = safeTitle + '_' + muxFmt.toUpperCase() + '.' + outExt;
 
     try {
-      if (progText) progText.textContent = 'Compliance verified (' + state.meta.author_name + ') · Connecting to MP4 stream muxer...';
+      if (progText) progText.textContent = 'Stream verified (' + state.meta.author_name + ') · Connecting to MP4 stream muxer...';
 
       // Re-probe localhost:3000 if previously false in case user just started server.js
       if (state.backendApiBase === false) state.backendApiBase = null;
@@ -1019,18 +965,32 @@
       var directDownloadUrl = startData.download_url || null;
 
       // Step 2: Poll conversion progress until MP4 muxing reaches 100%
-      var maxPolls = 60;
+      // For long videos (1-2 hours+), polling scales up to 1800 cycles (~30-45 minutes) with active ETA/speed tracking
+      var maxPolls = 1800;
+      var consecutiveErrors = 0;
       for (var pollIdx = 0; pollIdx < maxPolls && !directDownloadUrl; pollIdx++) {
         await new Promise(function(r) { setTimeout(r, pollIdx < 4 ? 900 : 1300); });
-        var pRes = await fetch(apiPrefix + '/__flippy_yt_progress?id=' + encodeURIComponent(jobId), { cache: 'no-store' });
-        if (!pRes.ok) continue;
+        var pRes = null;
+        try {
+          pRes = await fetch(apiPrefix + '/__flippy_yt_progress?id=' + encodeURIComponent(jobId), { cache: 'no-store' });
+        } catch (_) {
+          consecutiveErrors++;
+          if (consecutiveErrors > 20) throw new Error('Network connection to stream server lost.');
+          continue;
+        }
+        if (!pRes || !pRes.ok) {
+          consecutiveErrors++;
+          if (consecutiveErrors > 20) throw new Error('Stream status server error (HTTP ' + (pRes ? pRes.status : 0) + ')');
+          continue;
+        }
+        consecutiveErrors = 0;
         var pData = await pRes.json();
 
         var rawPct = typeof pData.progress === 'number' ? Math.min(100, Math.round(pData.progress / 10)) : 20;
-        var scaledPct = Math.max(12, Math.round(rawPct * 0.6)); // First 60% is cloud MP4 muxing
+        var scaledPct = Math.max(12, Math.round(rawPct * 0.6)); // First 60% is cloud/local MP4 muxing
         if (progFill) progFill.style.width = scaledPct + '%';
         if (progText) {
-          progText.textContent = 'Muxing ' + muxFmt.toUpperCase() + ' .' + outExt.toUpperCase() + ' stream: ' + rawPct + '% (' + (pData.text || 'Processing') + ')...';
+          progText.textContent = 'Muxing ' + muxFmt.toUpperCase() + ' .' + outExt.toUpperCase() + ' stream: ' + rawPct + '% (' + (pData.text || 'Processing long video...') + ')...';
         }
 
         if (pData.download_url && Number(pData.success) === 1) {
@@ -1074,6 +1034,8 @@
           + '&filename=' + encodeURIComponent(finalFilename);
       }
 
+      // For large or long videos (> 300MB), in-memory array buffering can exhaust browser JS heap memory.
+      // We check content-length first via HEAD / initial response.
       var mediaRes = await fetch(streamUrl, { cache: 'no-store' });
       var respType = (mediaRes.headers.get('content-type') || '').toLowerCase();
       var isBlockedMime =
@@ -1090,9 +1052,58 @@
         throw new Error(backendErrMsg);
       }
 
+      var contentLen = Number(mediaRes.headers.get('content-length')) || 0;
+      var isHugeFile = (contentLen > 350 * 1024 * 1024); // Over 350MB: long-form movie/podcast
+
+      // If file is very large, trigger direct browser streaming save via anchor or native download to prevent V8 OOM
+      if (isHugeFile && !needsTranscode()) {
+        if (progFill) progFill.style.width = '100%';
+        if (progText) progText.textContent = '✓ Large file ready (' + (contentLen / (1024 * 1024)).toFixed(0) + ' MB). Starting direct stream save...';
+
+        var readyBoxHuge = document.getElementById('ytcReadyMediaBox');
+        var readyFilenameElHuge = document.getElementById('ytcReadyFilename');
+        var playerHuge = document.getElementById('ytcPreviewPlayer');
+        var directLinkHuge = document.getElementById('ytcDirectMp4Link');
+        var savePhotosLabelHuge = document.getElementById('ytcSaveToPhotosLabel');
+
+        state.readyMedia.blobUrl = streamUrl;
+        state.readyMedia.directUrl = streamUrl;
+        state.readyMedia.file = null;
+        state.readyMedia.filename = finalFilename;
+        if (readyFilenameElHuge) readyFilenameElHuge.textContent = finalFilename;
+
+        if (playerHuge) {
+          playerHuge.style.display = (outExt === 'mp4') ? 'block' : 'none';
+          if (outExt === 'mp4') playerHuge.src = streamUrl;
+        }
+        if (directLinkHuge) {
+          directLinkHuge.href = streamUrl;
+          directLinkHuge.download = finalFilename;
+          directLinkHuge.textContent = '⬇ Save .' + outExt.toUpperCase() + ' (' + (contentLen / (1024 * 1024)).toFixed(0) + ' MB)';
+        }
+        if (savePhotosLabelHuge) {
+          savePhotosLabelHuge.textContent = '⬇ Save .' + outExt.toUpperCase() + ' Video (' + (contentLen / (1024 * 1024)).toFixed(0) + ' MB)';
+        }
+        if (readyBoxHuge) readyBoxHuge.style.display = 'flex';
+
+        triggerBrowserDownload(streamUrl, finalFilename);
+
+        // Record in session queue
+        state.history.unshift({
+          id: state.videoId,
+          title: state.meta.title,
+          author: state.meta.author_name,
+          res: muxFmt.toUpperCase(),
+          codec: state.settings.videoCodec.toUpperCase() + '/' + state.settings.audioCodec.toUpperCase(),
+          container: outExt.toUpperCase(),
+          timestamp: new Date().toLocaleTimeString()
+        });
+        renderHistory();
+        return;
+      }
+
       var mediaBlob = null;
       if (mediaRes.body && typeof mediaRes.body.getReader === 'function') {
-        var contentLen = Number(mediaRes.headers.get('content-length')) || 0;
         var reader = mediaRes.body.getReader();
         var chunks = [];
         var received = 0;

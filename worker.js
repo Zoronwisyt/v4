@@ -8,18 +8,8 @@
 
 const DEFAULT_SECRET = "FLIPPY_SECRET_SALT_2026_9b83f0c1";
 
-const BLOCKED_CHANNELS = [
-  'youtube movies',
-  'youtube movies & tv',
-  'youtube primetime',
-  'google play movies & tv',
-  'movies & shows'
-];
-
-const BLOCKED_TITLE_PATTERNS = [
-  /\b(?:buy\s+or\s+rent|rent\s+or\s+buy)\b/i,
-  /\b(?:requires\s+purchase|purchase\s+required|paid\s+rental)\b/i
-];
+const BLOCKED_CHANNELS = [];
+const BLOCKED_TITLE_PATTERNS = [];
 
 const ALLOWED_FORMATS = new Set([
   '4k', '1440', '1080', '720', '480', '360',
@@ -50,28 +40,6 @@ async function verifyYoutubeCompliance(ytUrl) {
     const r = await fetch(oembedUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
     if (!r.ok) return { allowed: true };
     const meta = await r.json();
-    const author = String(meta.author_name || '').toLowerCase().trim();
-    const title = String(meta.title || '').trim();
-
-    for (const ch of BLOCKED_CHANNELS) {
-      if (author === ch || author.includes(ch)) {
-        return {
-          allowed: false,
-          reason: `Blocked: "${meta.author_name}" is a paid YouTube storefront that requires buying or renting this video.`
-        };
-      }
-    }
-    for (const pat of BLOCKED_TITLE_PATTERNS) {
-      if (pat.test(title)) {
-        if (/trailer|teaser|preview|clip/i.test(title)) {
-          continue;
-        }
-        return {
-          allowed: false,
-          reason: 'Blocked: This video is marked as Buy or Rent and requires purchase on YouTube.'
-        };
-      }
-    }
     return { allowed: true, meta };
   } catch (_) {
     return { allowed: true };

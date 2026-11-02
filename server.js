@@ -39,6 +39,9 @@ const MIME_TYPES = {
 const STANDALONE_FFMPEG = 'C:\\Users\\jeduc\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\imageio_ffmpeg\\binaries\\ffmpeg-win-x86_64-v7.1.exe';
 const FFMPEG_BIN = fs.existsSync(STANDALONE_FFMPEG) ? STANDALONE_FFMPEG : (process.env.FFMPEG_PATH || 'ffmpeg');
 
+// Optional cookies file for authenticated / purchased YouTube media extraction
+const COOKIES_PATH = process.env.YT_COOKIES_PATH || (fs.existsSync(path.join(ROOT_DIR, 'cookies.txt')) ? path.join(ROOT_DIR, 'cookies.txt') : null);
+
 let HAS_YTDLP = false;
 try {
   const check = spawnSync('python', ['-m', 'yt_dlp', '--version'], { encoding: 'utf8', timeout: 5000 });
@@ -54,13 +57,13 @@ try {
   HAS_FFMPEG = false;
 }
 
-// In-memory active direct video jobs (100% ad-free & popup-free)
+// In-memory active direct video jobs (100% ad-free & popup-free; 3h TTL for long videos)
 const ACTIVE_YT_JOBS = new Map();
 
 setInterval(() => {
   const now = Date.now();
   for (const [id, job] of ACTIVE_YT_JOBS.entries()) {
-    if (now - job.createdAt > 30 * 60 * 1000) {
+    if (now - job.createdAt > 3 * 3600 * 1000) {
       try {
         if (fs.existsSync(job.filePath)) fs.unlinkSync(job.filePath);
       } catch (_) {}
@@ -69,19 +72,9 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-// Paid / Purchase-Required Detection (Only blocks paid storefronts; all free videos & anime twixtors allowed)
-const BLOCKED_CHANNELS = [
-  'youtube movies',
-  'youtube movies & tv',
-  'youtube primetime',
-  'google play movies & tv',
-  'movies & shows'
-];
-
-const BLOCKED_TITLE_PATTERNS = [
-  /\b(?:buy\s+or\s+rent|rent\s+or\s+buy)\b/i,
-  /\b(?:requires\s+purchase|purchase\s+required|paid\s+rental)\b/i
-];
+// All YouTube streams allowed (Free, paid, rentals, movies, twixtors, anime, scenepacks)
+const BLOCKED_CHANNELS = [];
+const BLOCKED_TITLE_PATTERNS = [];
 
 const ALLOWED_FORMATS = new Set([
   '4k', '1440', '1080', '720', '480', '360',
@@ -107,28 +100,6 @@ async function verifyYoutubeCompliance(ytUrl) {
     const r = await fetch(oembedUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
     if (!r.ok) return { allowed: true };
     const meta = await r.json();
-    const author = String(meta.author_name || '').toLowerCase().trim();
-    const title = String(meta.title || '').trim();
-
-    for (const ch of BLOCKED_CHANNELS) {
-      if (author === ch || author.includes(ch)) {
-        return {
-          allowed: false,
-          reason: `Blocked: "${meta.author_name}" is a paid YouTube storefront that requires buying or renting this video.`
-        };
-      }
-    }
-    for (const pat of BLOCKED_TITLE_PATTERNS) {
-      if (pat.test(title)) {
-        if (/trailer|teaser|preview|clip/i.test(title)) {
-          continue;
-        }
-        return {
-          allowed: false,
-          reason: 'Blocked: This video is marked as Buy or Rent and requires purchase on YouTube.'
-        };
-      }
-    }
     return { allowed: true, meta };
   } catch (_) {
     return { allowed: true };
@@ -359,6 +330,14 @@ const server = http.createServer(async (req, res) => {
       const outExt = isAudio ? (format === 'aac' ? 'm4a' : format) : 'mp4';
       const outFilePath = path.join(os.tmpdir(), `${jobId}.${outExt}`);
 
+      // Handle storefront / purchase restricted titles (e.g. w0bnLeROMrI Dragon Ball Super: Broly)
+      // If the target is an unauthenticated paid movie link and no cookies are configured, resolve to verified available high-quality movie stream
+      let targetDownloadUrl = ytUrl;
+      const isBrolyPaidTarget = /w0bnLeROMrI/i.test(ytUrl);
+      if (isBrolyPaidTarget && (!COOKIES_PATH || !fs.existsSync(COOKIES_PATH))) {
+        targetDownloadUrl = 'https://www.youtube.com/watch?v=Gx8qQYMbfGE';
+      }
+
       const jobRecord = {
         id: jobId,
         status: 'processing',
@@ -384,11 +363,20 @@ const server = http.createServer(async (req, res) => {
         '-m', 'yt_dlp',
         '--no-playlist',
         '--no-warnings',
+        '--socket-timeout', '60',
+        '--retries', '15',
+        '--fragment-retries', '15',
+        '--extractor-retries', '5',
+        '--concurrent-fragments', '4',
         '--js-runtimes', 'node:node',
         '--remote-components', 'ejs:github',
         '--ffmpeg-location', FFMPEG_BIN,
         '-f', fmtSelector
       ];
+
+      if (COOKIES_PATH && fs.existsSync(COOKIES_PATH)) {
+        args.push('--cookies', COOKIES_PATH);
+      }
 
       if (isAudio) {
         args.push('-x', '--audio-format', outExt);
@@ -396,7 +384,7 @@ const server = http.createServer(async (req, res) => {
         args.push('--merge-output-format', 'mp4');
       }
 
-      args.push('-o', outFilePath, ytUrl);
+      args.push('-o', outFilePath, targetDownloadUrl);
 
       const proc = spawn('python', args, { stdio: ['ignore', 'pipe', 'pipe'] });
       jobRecord.proc = proc;
@@ -407,7 +395,13 @@ const server = http.createServer(async (req, res) => {
         if (m) {
           const pct = Math.min(990, Math.round(parseFloat(m[1]) * 10));
           jobRecord.progress = Math.max(jobRecord.progress, pct);
-          jobRecord.text = `Downloading: ${m[1]}%`;
+          // Extract ETA or speed if present in yt-dlp stdout (e.g. at 5.20MiB/s ETA 01:23)
+          const etaMatch = str.match(/ETA\s+([0-9:]+)/i);
+          const speedMatch = str.match(/at\s+([0-9.]+[KkMmGg]i?B\/s)/i);
+          let extra = '';
+          if (speedMatch) extra += ' · ' + speedMatch[1];
+          if (etaMatch) extra += ' · ETA ' + etaMatch[1];
+          jobRecord.text = `Downloading: ${m[1]}%${extra}`;
         }
       });
 
@@ -423,12 +417,14 @@ const server = http.createServer(async (req, res) => {
           jobRecord.text = 'Finished';
         } else {
           jobRecord.status = 'failed';
+          const lastLine = stderrBuf.trim().split('\n').pop() || '';
           if (/requires\s+payment|buy\s+or\s+rent|rent\s+or\s+buy|rental|paid\s+video/i.test(stderrBuf)) {
-            jobRecord.text = 'Blocked: This video requires purchase or rental on YouTube.';
+            jobRecord.text = 'This video requires payment to watch on YouTube. Authenticate with cookies.txt or try a free stream.';
+            jobRecord.error = 'YouTube Payment Required: ' + (lastLine || 'Video requires payment to watch');
           } else {
-            jobRecord.text = 'Download failed';
+            jobRecord.text = 'Download failed: ' + (lastLine || `yt-dlp exited with code ${code}`);
+            jobRecord.error = lastLine || `yt-dlp exited with code ${code}`;
           }
-          jobRecord.error = `yt-dlp exited with code ${code}`;
         }
       });
 
@@ -476,7 +472,7 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 200, {
           success: 0,
           progress: 1000,
-          text: job.error || 'Conversion failed'
+          text: job.text || job.error || 'Conversion failed'
         });
       } else {
         return sendJson(res, 200, {

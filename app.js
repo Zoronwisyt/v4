@@ -4590,7 +4590,6 @@
   // =========================================================================
   const navTabStudio = $('#navTabStudio');
   const navTabConverter = $('#navTabConverter');
-  const navTabXmlGlsl = $('#navTabXmlGlsl');
   const navTabRealPreview = $('#navTabRealPreview');
   const navTabYtConverter = $('#navTabYtConverter');
   const navTabHollowBox = $('#navTabHollowBox');
@@ -4600,7 +4599,6 @@
   const previewPanelElem = $('#preview-panel');
   const dataPanelElem = $('#data-panel');
   const converterPanelElem = $('#converter-panel');
-  const xmlglslPanelElem = $('#xmlglsl-panel');
   const realpreviewPanelElem = $('#realpreview-panel');
   const ytconverterPanelElem = $('#ytconverter-panel');
   const hollowboxPanelElem = $('#hollowboxPanel');
@@ -4616,7 +4614,6 @@
     if (tabName === 'converter') {
       if (navTabConverter) navTabConverter.classList.add('active');
       if (navTabStudio) navTabStudio.classList.remove('active');
-      if (navTabXmlGlsl) navTabXmlGlsl.classList.remove('active');
       if (navTabRealPreview) navTabRealPreview.classList.remove('active');
       if (navTabYtConverter) navTabYtConverter.classList.remove('active');
       if (navTabHollowBox) navTabHollowBox.classList.remove('active');
@@ -4624,7 +4621,6 @@
       if (controlsPanelElem) controlsPanelElem.style.display = 'none';
       if (previewPanelElem) previewPanelElem.style.display = 'none';
       if (dataPanelElem) dataPanelElem.style.display = 'none';
-      if (xmlglslPanelElem) xmlglslPanelElem.style.display = 'none';
       if (realpreviewPanelElem) realpreviewPanelElem.style.display = 'none';
       if (ytconverterPanelElem) ytconverterPanelElem.style.display = 'none';
       if (hollowboxPanelElem) hollowboxPanelElem.style.display = 'none';
@@ -4647,47 +4643,10 @@
         mobileTabConv.classList.add('active');
       }
       ensureConverterSampleLoaded();
-    } else if (tabName === 'xmlglsl') {
-      if (navTabXmlGlsl) navTabXmlGlsl.classList.add('active');
-      if (navTabStudio) navTabStudio.classList.remove('active');
-      if (navTabConverter) navTabConverter.classList.remove('active');
-      if (navTabRealPreview) navTabRealPreview.classList.remove('active');
-      if (navTabYtConverter) navTabYtConverter.classList.remove('active');
-      if (navTabHollowBox) navTabHollowBox.classList.remove('active');
-      if (headerExportLabel) headerExportLabel.textContent = 'Export AM XML';
-      if (controlsPanelElem) controlsPanelElem.style.display = 'none';
-      if (previewPanelElem) previewPanelElem.style.display = 'none';
-      if (dataPanelElem) dataPanelElem.style.display = 'none';
-      if (converterPanelElem) converterPanelElem.style.display = 'none';
-      if (realpreviewPanelElem) realpreviewPanelElem.style.display = 'none';
-      if (ytconverterPanelElem) ytconverterPanelElem.style.display = 'none';
-      if (hollowboxPanelElem) hollowboxPanelElem.style.display = 'none';
-      if (xmlglslPanelElem) {
-        xmlglslPanelElem.style.display = isMobile ? 'block' : 'flex';
-        xmlglslPanelElem.style.opacity = '1';
-        xmlglslPanelElem.style.visibility = 'visible';
-        xmlglslPanelElem.style.pointerEvents = 'auto';
-      }
-      const mobileTabXg = document.getElementById('mobileTabXmlGlsl');
-      const mobileXgBtn = document.querySelector('.mobile-tab[data-tab="mobileTabXmlGlsl"]');
-      const mobileFloatingInsp = document.getElementById('mobileFloatingInspector');
-      const mobileInspToggleBtn = document.getElementById('mobileInspectorToggleBtn');
-      if (mobileFloatingInsp) mobileFloatingInsp.classList.add('hidden-for-tab');
-      if (mobileInspToggleBtn) mobileInspToggleBtn.classList.remove('active');
-      if (mobileXgBtn && mobileTabXg) {
-        document.querySelectorAll('.mobile-tab').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.mobile-tab-content').forEach(tc => tc.classList.remove('active'));
-        mobileXgBtn.classList.add('active');
-        mobileTabXg.classList.add('active');
-      }
-      if (window.XmlGlslStudio && typeof window.XmlGlslStudio.init === 'function') {
-        window.XmlGlslStudio.init();
-      }
     } else if (tabName === 'ytconverter') {
       if (navTabYtConverter) navTabYtConverter.classList.add('active');
       if (navTabStudio) navTabStudio.classList.remove('active');
       if (navTabConverter) navTabConverter.classList.remove('active');
-      if (navTabXmlGlsl) navTabXmlGlsl.classList.remove('active');
       if (navTabRealPreview) navTabRealPreview.classList.remove('active');
       if (navTabHollowBox) navTabHollowBox.classList.remove('active');
       if (headerExportLabel) headerExportLabel.textContent = 'Download Stream';
@@ -4695,7 +4654,6 @@
       if (previewPanelElem) previewPanelElem.style.display = 'none';
       if (dataPanelElem) dataPanelElem.style.display = 'none';
       if (converterPanelElem) converterPanelElem.style.display = 'none';
-      if (xmlglslPanelElem) xmlglslPanelElem.style.display = 'none';
       if (realpreviewPanelElem) realpreviewPanelElem.style.display = 'none';
       if (hollowboxPanelElem) hollowboxPanelElem.style.display = 'none';
       if (ytconverterPanelElem) {
@@ -4723,7 +4681,6 @@
       if (navTabRealPreview) navTabRealPreview.classList.add('active');
       if (navTabStudio) navTabStudio.classList.remove('active');
       if (navTabConverter) navTabConverter.classList.remove('active');
-      if (navTabXmlGlsl) navTabXmlGlsl.classList.remove('active');
       if (navTabYtConverter) navTabYtConverter.classList.remove('active');
       if (navTabHollowBox) navTabHollowBox.classList.remove('active');
       if (headerExportLabel) headerExportLabel.textContent = 'Export XML';
@@ -4731,7 +4688,6 @@
       if (previewPanelElem) previewPanelElem.style.display = 'none';
       if (dataPanelElem) dataPanelElem.style.display = 'none';
       if (converterPanelElem) converterPanelElem.style.display = 'none';
-      if (xmlglslPanelElem) xmlglslPanelElem.style.display = 'none';
       if (ytconverterPanelElem) ytconverterPanelElem.style.display = 'none';
       if (hollowboxPanelElem) hollowboxPanelElem.style.display = 'none';
       if (realpreviewPanelElem) {
@@ -4767,7 +4723,6 @@
       if (navTabHollowBox) navTabHollowBox.classList.add('active');
       if (navTabStudio) navTabStudio.classList.remove('active');
       if (navTabConverter) navTabConverter.classList.remove('active');
-      if (navTabXmlGlsl) navTabXmlGlsl.classList.remove('active');
       if (navTabRealPreview) navTabRealPreview.classList.remove('active');
       if (navTabYtConverter) navTabYtConverter.classList.remove('active');
       if (headerExportLabel) headerExportLabel.textContent = 'Export HB XML';
@@ -4775,7 +4730,6 @@
       if (previewPanelElem) previewPanelElem.style.display = 'none';
       if (dataPanelElem) dataPanelElem.style.display = 'none';
       if (converterPanelElem) converterPanelElem.style.display = 'none';
-      if (xmlglslPanelElem) xmlglslPanelElem.style.display = 'none';
       if (realpreviewPanelElem) realpreviewPanelElem.style.display = 'none';
       if (ytconverterPanelElem) ytconverterPanelElem.style.display = 'none';
       if (hollowboxPanelElem) {
@@ -4801,7 +4755,6 @@
       activeMainWorkspace = 'studio';
       if (navTabStudio) navTabStudio.classList.add('active');
       if (navTabConverter) navTabConverter.classList.remove('active');
-      if (navTabXmlGlsl) navTabXmlGlsl.classList.remove('active');
       if (navTabRealPreview) navTabRealPreview.classList.remove('active');
       if (navTabYtConverter) navTabYtConverter.classList.remove('active');
       if (navTabHollowBox) navTabHollowBox.classList.remove('active');
@@ -4810,7 +4763,6 @@
       if (previewPanelElem) previewPanelElem.style.display = '';
       if (dataPanelElem) dataPanelElem.style.display = '';
       if (converterPanelElem) converterPanelElem.style.display = 'none';
-      if (xmlglslPanelElem) xmlglslPanelElem.style.display = 'none';
       if (realpreviewPanelElem) realpreviewPanelElem.style.display = 'none';
       if (ytconverterPanelElem) ytconverterPanelElem.style.display = 'none';
       if (hollowboxPanelElem) hollowboxPanelElem.style.display = 'none';
@@ -4844,9 +4796,6 @@
   if (navTabConverter) {
     navTabConverter.addEventListener('click', () => switchMainTab('converter'));
   }
-  if (navTabXmlGlsl) {
-    navTabXmlGlsl.addEventListener('click', () => switchMainTab('xmlglsl'));
-  }
   if (navTabRealPreview) {
     navTabRealPreview.addEventListener('click', () => switchMainTab('realpreview'));
   }
@@ -4860,9 +4809,6 @@
     headerExportBtn.addEventListener('click', () => {
       if (activeMainWorkspace === 'converter') {
         const btnDl = document.getElementById('btnDownloadConvertedXml');
-        if (btnDl) btnDl.click();
-      } else if (activeMainWorkspace === 'xmlglsl') {
-        const btnDl = document.getElementById('xmlglslExportXmlBtn');
         if (btnDl) btnDl.click();
       } else if (activeMainWorkspace === 'ytconverter') {
         const btnDl = document.getElementById('ytcDownloadBtn');
@@ -8284,7 +8230,6 @@ void main() {
     const previewPanel  = document.getElementById('preview-panel');
     const dataPanel     = document.getElementById('data-panel');
     const converterPanel = document.getElementById('converter-panel');
-    const xmlglslPanel = document.getElementById('xmlglsl-panel');
     const ytconverterPanel = document.getElementById('ytconverter-panel');
     const realpreviewPanel = document.getElementById('realpreview-panel');
     const hollowboxPanel = document.getElementById('hollowboxPanel');
@@ -8293,7 +8238,6 @@ void main() {
     const mobilePreviewSlot   = document.getElementById('mobilePreviewSlot');
     const mobileDataSlot      = document.getElementById('mobileDataSlot');
     const mobileConverterSlot = document.getElementById('mobileConverterSlot');
-    const mobileXmlGlslSlot   = document.getElementById('mobileXmlGlslSlot');
     const mobileYtConverterSlot = document.getElementById('mobileYtConverterSlot');
     const mobileRealPreviewSlot = document.getElementById('mobileRealPreviewSlot');
     const mobileHollowBoxSlot = document.getElementById('mobileHollowBoxSlot');
@@ -8326,7 +8270,7 @@ void main() {
       }
     }
 
-    [controlsBody, canvasContainer, playbackControls, formulasCard, tableContainer, xmlSection, converterPanel, xmlglslPanel, ytconverterPanel, realpreviewPanel, hollowboxPanel]
+    [controlsBody, canvasContainer, playbackControls, formulasCard, tableContainer, xmlSection, converterPanel, ytconverterPanel, realpreviewPanel, hollowboxPanel]
       .forEach(saveOrigin);
 
     function moveToMobile() {
@@ -8339,10 +8283,6 @@ void main() {
       if (converterPanel && mobileConverterSlot) {
         converterPanel.style.display = 'block';
         mobileConverterSlot.appendChild(converterPanel);
-      }
-      if (xmlglslPanel && mobileXmlGlslSlot) {
-        xmlglslPanel.style.display = 'block';
-        mobileXmlGlslSlot.appendChild(xmlglslPanel);
       }
       if (ytconverterPanel && mobileYtConverterSlot) {
         ytconverterPanel.style.display = 'block';
@@ -8359,17 +8299,14 @@ void main() {
     }
 
     function moveToDesktop() {
-      [controlsBody, canvasContainer, playbackControls, formulasCard, tableContainer, xmlSection, converterPanel, xmlglslPanel, ytconverterPanel, realpreviewPanel, hollowboxPanel]
+      [controlsBody, canvasContainer, playbackControls, formulasCard, tableContainer, xmlSection, converterPanel, ytconverterPanel, realpreviewPanel, hollowboxPanel]
         .forEach(restoreOrigin);
       const isConverterActive = navTabConverter && navTabConverter.classList.contains('active');
-      const isXmlGlslActive = navTabXmlGlsl && navTabXmlGlsl.classList.contains('active');
       const isYtConverterActive = navTabYtConverter && navTabYtConverter.classList.contains('active');
       const isRealPreviewActive = navTabRealPreview && navTabRealPreview.classList.contains('active');
       const isHollowBoxActive = navTabHollowBox && navTabHollowBox.classList.contains('active');
       if (isConverterActive) {
         switchMainTab('converter');
-      } else if (isXmlGlslActive) {
-        switchMainTab('xmlglsl');
       } else if (isYtConverterActive) {
         switchMainTab('ytconverter');
       } else if (isRealPreviewActive) {
@@ -8711,22 +8648,10 @@ void main() {
           if (mobileInspectorToggleBtn) mobileInspectorToggleBtn.classList.remove('active');
           if (navTabConverter) navTabConverter.classList.add('active');
           if (navTabStudio) navTabStudio.classList.remove('active');
-          if (navTabXmlGlsl) navTabXmlGlsl.classList.remove('active');
           if (navTabYtConverter) navTabYtConverter.classList.remove('active');
           if (navTabRealPreview) navTabRealPreview.classList.remove('active');
           if (navTabHollowBox) navTabHollowBox.classList.remove('active');
           ensureConverterSampleLoaded();
-        } else if (targetId === 'mobileTabXmlGlsl') {
-          activeMainWorkspace = 'xmlglsl';
-          if (mobileFloatingInspector) mobileFloatingInspector.classList.add('hidden-for-tab');
-          if (mobileInspectorToggleBtn) mobileInspectorToggleBtn.classList.remove('active');
-          if (navTabXmlGlsl) navTabXmlGlsl.classList.add('active');
-          if (navTabStudio) navTabStudio.classList.remove('active');
-          if (navTabConverter) navTabConverter.classList.remove('active');
-          if (navTabYtConverter) navTabYtConverter.classList.remove('active');
-          if (navTabRealPreview) navTabRealPreview.classList.remove('active');
-          if (navTabHollowBox) navTabHollowBox.classList.remove('active');
-          if (window.XmlGlslStudio && typeof window.XmlGlslStudio.init === 'function') window.XmlGlslStudio.init();
         } else if (targetId === 'mobileTabYtConverter') {
           activeMainWorkspace = 'ytconverter';
           if (mobileFloatingInspector) mobileFloatingInspector.classList.add('hidden-for-tab');
@@ -8734,7 +8659,6 @@ void main() {
           if (navTabYtConverter) navTabYtConverter.classList.add('active');
           if (navTabStudio) navTabStudio.classList.remove('active');
           if (navTabConverter) navTabConverter.classList.remove('active');
-          if (navTabXmlGlsl) navTabXmlGlsl.classList.remove('active');
           if (navTabRealPreview) navTabRealPreview.classList.remove('active');
           if (navTabHollowBox) navTabHollowBox.classList.remove('active');
           if (window.YtConverterStudio && typeof window.YtConverterStudio.init === 'function') window.YtConverterStudio.init();
@@ -8745,7 +8669,6 @@ void main() {
           if (navTabRealPreview) navTabRealPreview.classList.add('active');
           if (navTabStudio) navTabStudio.classList.remove('active');
           if (navTabConverter) navTabConverter.classList.remove('active');
-          if (navTabXmlGlsl) navTabXmlGlsl.classList.remove('active');
           if (navTabYtConverter) navTabYtConverter.classList.remove('active');
           if (navTabHollowBox) navTabHollowBox.classList.remove('active');
           if (typeof initRealPreview === 'function') initRealPreview();
@@ -8756,7 +8679,6 @@ void main() {
           if (navTabHollowBox) navTabHollowBox.classList.add('active');
           if (navTabStudio) navTabStudio.classList.remove('active');
           if (navTabConverter) navTabConverter.classList.remove('active');
-          if (navTabXmlGlsl) navTabXmlGlsl.classList.remove('active');
           if (navTabYtConverter) navTabYtConverter.classList.remove('active');
           if (navTabRealPreview) navTabRealPreview.classList.remove('active');
           if (typeof initHollowBoxMaker === 'function') initHollowBoxMaker();
@@ -8773,7 +8695,6 @@ void main() {
           }
           if (navTabStudio) navTabStudio.classList.add('active');
           if (navTabConverter) navTabConverter.classList.remove('active');
-          if (navTabXmlGlsl) navTabXmlGlsl.classList.remove('active');
           if (navTabYtConverter) navTabYtConverter.classList.remove('active');
           if (navTabRealPreview) navTabRealPreview.classList.remove('active');
           if (navTabHollowBox) navTabHollowBox.classList.remove('active');
