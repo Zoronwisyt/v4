@@ -60,7 +60,16 @@ function extractYoutubeVideoId(input) {
   return null;
 }
 
+function isTikTokUrl(input) {
+  if (!input) return false;
+  return /(?:^https?:\/\/)?(?:www\.|vm\.|vt\.|m\.)?tiktok\.com\/.+/i.test(String(input).trim());
+}
+
 function canonicalYoutubeWatchUrl(input) {
+  if (isTikTokUrl(input)) {
+    const t = String(input).trim();
+    return /^https?:\/\//i.test(t) ? t : `https://${t}`;
+  }
   const id = extractYoutubeVideoId(input);
   return id ? `https://www.youtube.com/watch?v=${id}` : String(input || "").trim();
 }
@@ -276,7 +285,40 @@ async function resolveViaCobalt(ytUrl, format) {
   throw new Error('Cobalt fallback instance unavailable');
 }
 
+async function resolveViaTikWM(ttUrl, format) {
+  const wantAudio = isAudioFormat(format);
+  let cleanUrl = String(ttUrl || '').trim();
+  if (!/^https?:\/\//i.test(cleanUrl)) cleanUrl = 'https://' + cleanUrl;
+
+  const r = await fetchWithTimeout('https://www.tikwm.com/api/?url=' + encodeURIComponent(cleanUrl) + '&hd=1', {
+    headers: { 'User-Agent': YT_UA_MOBILE, 'Accept': 'application/json' }
+  }, 12000);
+  if (!r.ok) throw new Error(`TikWM HTTP ${r.status}`);
+  const j = await r.json();
+  if (!j || j.code !== 0 || !j.data) throw new Error((j && j.msg) || 'TikWM stream unavailable');
+  const d = j.data;
+  let streamUrl = wantAudio ? (d.music || d.hdplay || d.play) : (d.hdplay || d.play);
+  if (!streamUrl) throw new Error('TikWM returned empty stream URL');
+  streamUrl = String(streamUrl).trim();
+  if (streamUrl.startsWith('//')) streamUrl = 'https:' + streamUrl;
+  else if (streamUrl.startsWith('/')) streamUrl = 'https://www.tikwm.com' + streamUrl;
+
+  return {
+    provider: 'tikwm-hd-nowm',
+    streamUrl,
+    referer: 'https://www.tiktok.com/',
+    title: d.title || 'tiktok_hd_video'
+  };
+}
+
 async function resolveCloudMedia(ytUrl, format) {
+  if (isTikTokUrl(ytUrl)) {
+    try {
+      return await resolveViaTikWM(ytUrl, format);
+    } catch (_) {
+      return await resolveViaCobalt(ytUrl, format);
+    }
+  }
   try {
     return await resolveViaSaveTube(ytUrl, format);
   } catch (_) {
@@ -403,8 +445,10 @@ export default {
       const rawFmt = (url.searchParams.get('format') || '1080').trim().toLowerCase();
       const format = ALLOWED_FORMATS.has(rawFmt) ? rawFmt : '1080';
 
-      if (!ytUrl || !/(?:youtube\.com|youtu\.be)/i.test(ytUrl) || !extractYoutubeVideoId(ytUrl)) {
-        return jsonResponse(400, { success: false, error: 'Invalid YouTube URL' });
+      const validYouTube = /(?:youtube\.com|youtu\.be)/i.test(ytUrl) && !!extractYoutubeVideoId(ytUrl);
+      const validTikTok = isTikTokUrl(ytUrl);
+      if (!ytUrl || (!validYouTube && !validTikTok)) {
+        return jsonResponse(400, { success: false, error: 'Invalid YouTube or TikTok URL' });
       }
 
       const compliance = await verifyYoutubeCompliance(ytUrl);

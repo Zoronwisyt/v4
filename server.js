@@ -135,8 +135,67 @@ function decryptSaveTubeNode(encB64) {
   return JSON.parse(Buffer.concat([decipher.update(raw.subarray(16)), decipher.final()]).toString('utf8'));
 }
 
-// Popup-free & ad-free cloud resolution pipeline (SaveTube CDN AES + Cobalt v11)
+function isTikTokUrl(rawUrl) {
+  return /(?:^https?:\/\/)?(?:www\.|vm\.|vt\.|m\.)?tiktok\.com\/.+/i.test(String(rawUrl || '').trim());
+}
+
+function isSupportedMediaUrl(rawUrl) {
+  return /(?:youtube\.com|youtu\.be|tiktok\.com)/i.test(String(rawUrl || '').trim());
+}
+
+async function resolveTikTokNoWatermark(ttUrl, format) {
+  const wantAudio = ['mp3', 'm4a', 'aac', 'wav', 'flac', 'opus'].includes(format);
+  let cleanUrl = String(ttUrl || '').trim();
+  if (!/^https?:\/\//i.test(cleanUrl)) cleanUrl = 'https://' + cleanUrl;
+
+  const r = await fetch('https://www.tikwm.com/api/?url=' + encodeURIComponent(cleanUrl) + '&hd=1', {
+    headers: { 'User-Agent': YT_UA_MOBILE, 'Accept': 'application/json' }
+  });
+  if (r.ok) {
+    const j = await r.json();
+    if (j && j.code === 0 && j.data) {
+      const d = j.data;
+      let streamUrl = wantAudio ? (d.music || d.hdplay || d.play) : (d.hdplay || d.play);
+      if (streamUrl) {
+        streamUrl = String(streamUrl).trim();
+        if (streamUrl.startsWith('//')) streamUrl = 'https:' + streamUrl;
+        else if (streamUrl.startsWith('/')) streamUrl = 'https://www.tikwm.com' + streamUrl;
+        return {
+          provider: 'tikwm-hd-nowm',
+          streamUrl,
+          referer: 'https://www.tiktok.com/',
+          title: d.title || 'tiktok_hd_video'
+        };
+      }
+    }
+  }
+
+  const cbRes = await fetch('https://rue-cobalt.xenon.zone/', {
+    method: 'POST',
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'User-Agent': YT_UA_MOBILE },
+    body: JSON.stringify(wantAudio
+      ? { url: cleanUrl, downloadMode: 'audio', audioFormat: format === 'wav' ? 'wav' : 'mp3' }
+      : { url: cleanUrl, videoQuality: 'max', tiktokFullAudio: true })
+  });
+  if (cbRes.ok) {
+    const cbJson = await cbRes.json();
+    if ((cbJson.status === 'tunnel' || cbJson.status === 'redirect') && cbJson.url) {
+      return {
+        provider: 'cobalt-tiktok-nowm',
+        streamUrl: String(cbJson.url),
+        referer: '',
+        title: cbJson.filename || 'tiktok_hd_video'
+      };
+    }
+  }
+  throw new Error('TikTok no-watermark HD extractor unavailable for this link');
+}
+
+// Popup-free & ad-free cloud resolution pipeline (TikWM HD No-Watermark + SaveTube CDN AES + Cobalt v11)
 async function resolveFallbackCloudUrl(ytUrl, format) {
+  if (isTikTokUrl(ytUrl)) {
+    return await resolveTikTokNoWatermark(ytUrl, format);
+  }
   const wantAudio = ['mp3', 'm4a', 'aac', 'wav', 'flac', 'opus'].includes(format);
   try {
     const { cdn } = await (await fetch('https://media.savetube.vip/api/random-cdn', {
@@ -308,14 +367,32 @@ const server = http.createServer(async (req, res) => {
     return handleTranscode(parsed, req, res);
   }
 
-  // Step 1: Initiate real MP4 / Audio conversion job (100% ad-free & popup-free)
+  // Step 1: Initiate real MP4 / Audio conversion job (100% ad-free, popup-free, YouTube + TikTok No-Watermark HD)
   if (pathname === '/__flippy_yt_dl') {
     const ytUrl = (parsed.searchParams.get('url') || '').trim();
     const rawFmt = (parsed.searchParams.get('format') || '1080').trim().toLowerCase();
     const format = ALLOWED_FORMATS.has(rawFmt) ? rawFmt : '1080';
 
-    if (!ytUrl || !/(?:youtube\.com|youtu\.be)/i.test(ytUrl)) {
-      return sendJson(res, 400, { success: false, error: 'Invalid YouTube URL' });
+    if (!ytUrl || !isSupportedMediaUrl(ytUrl)) {
+      return sendJson(res, 400, { success: false, error: 'Invalid YouTube or TikTok URL' });
+    }
+
+    // Direct Full-Quality No-Watermark TikTok Video / Short Extractor (0 Popups, 0 Owner Watermark)
+    if (isTikTokUrl(ytUrl)) {
+      try {
+        const resolved = await resolveTikTokNoWatermark(ytUrl, format);
+        return sendJson(res, 200, {
+          success: 1,
+          id: 'tt_' + Date.now().toString(36),
+          progress: 1000,
+          text: 'Finished (No-Watermark Full HD)',
+          title: resolved.title || '',
+          format,
+          download_url: '/__flippy_yt_stream?src=' + encodeURIComponent(resolved.streamUrl) + '&url=' + encodeURIComponent(ytUrl) + '&format=' + encodeURIComponent(format)
+        });
+      } catch (err) {
+        return sendJson(res, 502, { success: false, error: err.message || 'TikTok HD no-watermark stream unavailable' });
+      }
     }
 
     const compliance = await verifyYoutubeCompliance(ytUrl);
@@ -534,15 +611,16 @@ const server = http.createServer(async (req, res) => {
     }
 
     let streamResult = null;
+    const defaultReferer = isTikTokUrl(ytUrl) ? 'https://www.tiktok.com/' : 'https://save-tube.com/';
     if (src) {
-      streamResult = await openCleanUpstreamReader(src, 'https://save-tube.com/');
+      streamResult = await openCleanUpstreamReader(src, defaultReferer);
     }
 
     if (!streamResult && ytUrl) {
       try {
         const fresh = await resolveFallbackCloudUrl(ytUrl, format);
         if (fresh && fresh.streamUrl) {
-          streamResult = await openCleanUpstreamReader(fresh.streamUrl, fresh.referer || 'https://save-tube.com/');
+          streamResult = await openCleanUpstreamReader(fresh.streamUrl, fresh.referer || defaultReferer);
         }
       } catch (_) {}
     }
