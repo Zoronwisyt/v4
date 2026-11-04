@@ -16,6 +16,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=4.9">
+  <link rel="stylesheet" href="editing_tab.css?v=1.0">
 </head>
 <body class="locked">
 
@@ -179,6 +180,12 @@
             <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>
           </svg>
           <span>YT Converter</span>
+        </button>
+        <button class="nav-tab" data-tab="editing" id="navTabEditing" type="button" style="display: none !important;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          <span>Editing TAB</span>
         </button>
       </nav>
 
@@ -1980,6 +1987,658 @@
 
       </div>
     </section>
+
+    <section class="panel editing-panel" id="editing-panel" style="display: none; grid-column: 1 / -1;">
+      <!-- Alight Motion Top Bar -->
+      <div class="am-top-bar">
+        <div class="am-top-left">
+          <button class="am-nav-btn" id="amBackBtn" type="button" title="Back">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+          <div class="am-project-title-wrap" id="amProjectTitleWrap" title="Click to rename project">
+            <span class="am-project-title" id="amProjectTitleText">Project Name 7</span>
+            <span class="am-project-res-badge" id="amProjectResBadge">1080×1080 • 60fps</span>
+          </div>
+        </div>
+        <div class="am-top-right">
+          <button class="am-nav-btn" id="amSettingsBtn" type="button" title="Project Settings">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+          <button class="am-export-btn" id="amExportBtn" type="button" title="Export Alight Motion XML">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <span>Export XML</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Body: Left Strip + Center Area + Right Drawer -->
+      <div class="am-main-body">
+        <!-- Left Strip -->
+        <div class="am-left-strip">
+          <button class="am-tool-btn" id="amAspectBtn" type="button" title="Aspect Ratio">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="3" x2="9" y2="21"></line>
+            </svg>
+          </button>
+          <button class="am-tool-btn" id="amGridToggleBtn" type="button" title="Toggle Guidelines">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="3" y1="15" x2="21" y2="15"></line>
+              <line x1="9" y1="3" x2="9" y2="21"></line>
+              <line x1="15" y1="3" x2="15" y2="21"></line>
+            </svg>
+          </button>
+          <button class="am-tool-btn" id="amLayersOverlayBtn" type="button" title="Layers Mode">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+              <polyline points="2 17 12 22 22 17"></polyline>
+              <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+          </button>
+          <button class="am-tool-btn" id="amCameraBtn" type="button" title="3D Camera">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+          </button>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 4px 0;">
+            <button class="am-tool-btn" id="amZoomInBtn" style="height: 24px;" type="button" title="Zoom In">+</button>
+            <span class="am-zoom-badge" id="amZoomBadge">100%</span>
+            <button class="am-tool-btn" id="amZoomOutBtn" style="height: 24px;" type="button" title="Zoom Out">-</button>
+          </div>
+          <button class="am-tool-btn" id="amUndoBtn" type="button" title="Step Back 1 Frame">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 7v6h6"></path>
+              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+            </svg>
+          </button>
+          <button class="am-tool-btn" id="amRedoBtn" type="button" title="Step Forward 1 Frame">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 7v6h-6"></path>
+              <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path>
+            </svg>
+          </button>
+          <div class="am-strip-spacer"></div>
+          <button class="am-tool-btn am-play-icon" id="amLeftPlayBtn" type="button" title="Play">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Center Area: Canvas + Scrubber + Timeline -->
+        <div class="am-center-area">
+          <div class="am-canvas-stage">
+            <div class="am-canvas-viewport" id="amCanvasViewport" style="width: 480px; height: 480px;">
+              <canvas id="amGlCanvas" width="1080" height="1080"></canvas>
+              <!-- Interactive Transform Manipulator Overlay -->
+              <div class="am-canvas-manipulator" id="amCanvasManipulator" style="display: none;">
+                <div class="am-manip-bounds">
+                  <div class="am-manip-handle tl" data-handle="tl"></div>
+                  <div class="am-manip-handle tr" data-handle="tr"></div>
+                  <div class="am-manip-handle bl" data-handle="bl"></div>
+                  <div class="am-manip-handle br" data-handle="br"></div>
+                  <div class="am-manip-rot-line"></div>
+                  <div class="am-manip-rot-handle" data-handle="rot"></div>
+                  <div class="am-manip-center" data-handle="move"></div>
+                </div>
+              </div>
+              <div class="am-guide-line-h"></div>
+              <div class="am-guide-line-v"></div>
+              <div class="am-empty-canvas-prompt" id="amEmptyCanvasPrompt">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+                <p>No media layers added.<br>Import videos or images from the right drawer to start editing.</p>
+              </div>
+              <div class="am-gizmo-box" id="amGizmoBox">
+                <div class="am-gizmo-handle tl"></div>
+                <div class="am-gizmo-handle tr"></div>
+                <div class="am-gizmo-handle bl"></div>
+                <div class="am-gizmo-handle br"></div>
+                <div class="am-gizmo-handle rot"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Transport Scrubber Bar -->
+          <div class="am-transport-bar">
+            <div class="am-transport-left">
+              <span class="am-time-total" id="amTimeTotal">00:10:00</span>
+            </div>
+            <div class="am-transport-center">
+              <button class="am-transport-btn" id="amJumpPrevKfBtn" type="button" title="Previous Keyframe">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                  <line x1="5" y1="19" x2="5" y2="5"></line>
+                </svg>
+              </button>
+              <button class="am-transport-btn am-play-btn am-play-icon" id="amPlayBtn" type="button" title="Play / Pause">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+              </button>
+              <button class="am-transport-btn" id="amJumpNextKfBtn" type="button" title="Next Keyframe">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                  <line x1="19" y1="5" x2="19" y2="19"></line>
+                </svg>
+              </button>
+              <button class="am-transport-btn" id="amBookmarkBtn" type="button" title="Mark / Remove Beat Bookmark at Playhead">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                  <line x1="12" y1="8" x2="12" y2="14"></line>
+                  <line x1="9" y1="11" x2="15" y2="11"></line>
+                </svg>
+              </button>
+              <button class="am-keyframe-toggle-btn" id="amKeyframeToggleBtn" type="button" title="Add / Remove Keyframe at Playhead">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="12 2 22 12 12 22 2 12 12 2"></polygon>
+                </svg>
+              </button>
+              <span class="am-time-badge" id="amTimeBadge">00:00:00</span>
+            </div>
+            <div class="am-transport-right">
+              <!-- Timeline Zoom Controls -->
+              <div class="am-zoom-controls">
+                <button class="am-transport-btn" id="amTimelineZoomOut" type="button" title="Zoom Out Timeline">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+                <button class="am-transport-btn" id="amTimelineZoomIn" type="button" title="Zoom In Timeline">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+              </div>
+
+              <!-- Quick Layer Actions -->
+              <button class="am-transport-btn" id="amCopyLayerBtn" type="button" title="Copy Selected Layer (Ctrl+C)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
+              <button class="am-transport-btn" id="amPasteLayerBtn" type="button" title="Paste Layer (Ctrl+V)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+              </button>
+              <button class="am-transport-btn" id="amDuplicateLayerBtn" type="button" title="Duplicate Layer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+              </button>
+              <button class="am-transport-btn" id="amDeleteLayerBtn" type="button" title="Delete Layer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+              <button class="am-transport-btn" id="amSplitClipBtn" type="button" title="Split Clip at Playhead (S)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="6" cy="6" r="3"></circle>
+                  <circle cx="6" cy="18" r="3"></circle>
+                  <line x1="20" y1="4" x2="8.12" y2="15.88"></line>
+                  <line x1="14.47" y1="14.48" x2="20" y2="20"></line>
+                  <line x1="8.12" y1="8.12" x2="12" y2="12"></line>
+                </svg>
+              </button>
+              <button class="am-transport-btn" id="amGraphModalBtn" type="button" title="Easing Curve Graph Editor">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 3v18h18"></path>
+                  <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Multi-Track Timeline -->
+          <div class="am-timeline-container">
+            <div class="am-ruler-wrap" id="amRulerWrap">
+              <canvas class="am-ruler-canvas" id="amRulerCanvas"></canvas>
+            </div>
+            <div class="am-beat-lines-layer" id="amBeatLinesLayer"></div>
+            <div class="am-playhead-line" id="amPlayheadLine" title="Click to Mark/Unmark Beat"></div>
+            <div class="am-tracks-viewport" id="amTracksViewport"></div>
+          </div>
+        </div>
+
+        <!-- Right Alight Motion Drawer (Media / Documents Browser, Effects, Text) -->
+        <div class="am-right-drawer">
+          <div class="am-drawer-content">
+            <div class="am-drawer-header">
+              <div class="am-drawer-header-left">
+                <button class="am-nav-btn" id="amDrawerBackBtn" style="padding: 2px 4px; font-size: 14px;" type="button">&lt;</button>
+                <span class="am-drawer-title" id="amDrawerTitle">MEDIA</span>
+              </div>
+            </div>
+
+            <!-- TAB 1: SHAPES VIEW (Screenshot 1 Theme) -->
+            <div class="am-drawer-view" id="amDrawerShapeView" style="display: none; padding: 12px; overflow-y: auto;">
+              <div class="am-shapes-grid" id="amShapesGrid"></div>
+            </div>
+
+            <!-- TAB 2: MEDIA BROWSER VIEW (Videos & Images) -->
+            <div class="am-drawer-view am-media-browser-view" id="amDrawerMediaView" style="display: flex;">
+              <input type="file" id="amMediaFileInput" accept="video/*,image/*,.mp4,.webm,.mov,.mkv,.avi,.wmv,.flv,.png,.jpg,.jpeg,.webp,.gif,.bmp" multiple style="display: none;">
+              
+              <div class="am-media-dropzone" id="amMediaDropzone">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span>Drop video or image here</span>
+                <small>MP4, WebM, MOV, PNG, JPG, WebP</small>
+              </div>
+
+              <button class="am-import-media-btn" id="amTriggerImportBtn" type="button">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Import Video / Image</span>
+              </button>
+
+              <div style="display: flex; gap: 6px; margin-top: 4px;">
+                <button class="am-cat-pill am-media-filter-pill active" data-filter="all" type="button">All</button>
+                <button class="am-cat-pill am-media-filter-pill" data-filter="video" type="button">Videos</button>
+                <button class="am-cat-pill am-media-filter-pill" data-filter="image" type="button">Images</button>
+              </div>
+
+              <div class="am-media-grid" id="amMediaGrid"></div>
+            </div>
+
+            <!-- TAB 3: AUDIO BROWSER & TIMING VIEW -->
+            <div class="am-drawer-view" id="amDrawerAudioView" style="display: none; padding: 12px; overflow-y: auto;">
+              <input type="file" id="amAudioFileInput" accept="audio/mp3,audio/wav,audio/m4a,audio/aac,audio/ogg,audio/flac,audio/*" multiple style="display: none;">
+              
+              <div class="am-media-dropzone" id="amAudioDropzone">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 18V5l12-2v13"></path>
+                  <circle cx="6" cy="18" r="3"></circle>
+                  <circle cx="18" cy="16" r="3"></circle>
+                </svg>
+                <span>Drop Audio Files (.mp3, .wav, .m4a)</span>
+                <small>Full Audio Waveform & Sync Compatibility</small>
+              </div>
+
+              <button class="am-import-media-btn" id="amTriggerAudioImportBtn" type="button">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Import Audio File</span>
+              </button>
+
+              <div class="am-audio-list" id="amAudioList" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;"></div>
+            </div>
+
+            <!-- TAB 4: FREEHAND & VECTOR DRAWING VIEW -->
+            <div class="am-drawer-view" id="amDrawerDrawView" style="display: none; padding: 14px; overflow-y: auto;">
+              <div class="am-draw-controls">
+                <label class="am-settings-label">Drawing Tool</label>
+                <div style="display: flex; gap: 8px;">
+                  <button class="am-btn-action active" id="amDrawFreehandBtn" type="button">Pencil</button>
+                  <button class="am-btn-action" id="amDrawVectorBtn" type="button">Vector Path</button>
+                </div>
+                <label class="am-settings-label" style="margin-top: 10px;">Stroke Width</label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <input type="range" id="amDrawStrokeWidth" min="1" max="50" value="6" style="flex:1;">
+                  <span id="amDrawStrokeWidthVal" style="font-size:12px; color:#fff; width:30px;">6px</span>
+                </div>
+                <label class="am-settings-label" style="margin-top: 10px;">Stroke Color</label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <input type="color" id="amDrawStrokeColor" value="#00e676">
+                  <input type="text" id="amDrawStrokeColorHex" value="#00e676" style="background:#11131c; border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:4px 8px; color:#fff; font-size:12px; width:80px;">
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 14px;">
+                  <button class="am-btn-save" id="amStartDrawingBtn" type="button" style="flex:1;">Start Drawing</button>
+                  <button class="am-btn-cancel" id="amClearDrawingBtn" type="button">Clear</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 5: TEXT & CUSTOM FONT IMPORTER VIEW -->
+            <div class="am-drawer-view" id="amDrawerTextView" style="display: none; padding: 14px; overflow-y: auto;">
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button class="am-import-media-btn" id="amAddTextLayerBtn" type="button">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  <span>Add New Text Layer</span>
+                </button>
+
+                <label class="am-settings-label">Text Content</label>
+                <textarea id="amTextInput" rows="3" style="background: #11131c; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 8px; color: #fff; font-size: 13px; font-family: inherit; resize: vertical;">Alight Motion</textarea>
+                
+                <label class="am-settings-label">Font Family</label>
+                <div style="display: flex; gap: 6px;">
+                  <select id="amFontFamilySelect" style="flex: 1; background: #11131c; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 6px; color: #fff; font-size: 12px;">
+                    <option value="system-ui">System Default</option>
+                    <option value="Roboto" selected>Roboto</option>
+                    <option value="Montserrat">Montserrat</option>
+                    <option value="Poppins">Poppins</option>
+                    <option value="Inter">Inter</option>
+                    <option value="Bebas Neue">Bebas Neue</option>
+                    <option value="Impact">Impact</option>
+                    <option value="Pacifico">Pacifico</option>
+                    <option value="Courier New">Courier New</option>
+                  </select>
+                  <input type="file" id="amFontFileInput" accept=".ttf,.otf,.woff,.woff2" style="display: none;">
+                  <button class="am-btn-action" id="amImportFontBtn" type="button" title="Import Custom Font (.ttf, .otf, .woff)">Font+</button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <div>
+                    <label class="am-settings-label">Font Size</label>
+                    <input type="number" id="amTextFontSize" value="64" min="8" max="400" style="width: 100%; background: #11131c; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 6px; color: #fff;">
+                  </div>
+                  <div>
+                    <label class="am-settings-label">Letter Spacing</label>
+                    <input type="number" id="amTextLetterSpacing" value="0" min="-20" max="100" style="width: 100%; background: #11131c; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 6px; color: #fff;">
+                  </div>
+                </div>
+
+                <label class="am-settings-label">Text Alignment</label>
+                <div style="display: flex; gap: 6px;">
+                  <button class="am-btn-action active" data-align="left" id="amAlignLeftBtn" type="button">Left</button>
+                  <button class="am-btn-action" data-align="center" id="amAlignCenterBtn" type="button">Center</button>
+                  <button class="am-btn-action" data-align="right" id="amAlignRightBtn" type="button">Right</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 6: EFFECTS VIEW (192 Verified Effects) -->
+            <div class="am-drawer-view am-effects-view" id="amDrawerEffectsView" style="display: none;">
+              <div style="display: flex; gap: 6px;">
+                <button class="am-add-effect-btn" id="amAddEffectBtn" type="button" style="flex: 2;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  <span>Add Effect</span>
+                </button>
+                <button class="am-btn-action" id="amCopyEffectsBtn" type="button" title="Copy Effects" style="flex: 1;">Copy</button>
+                <button class="am-btn-action" id="amPasteEffectsBtn" type="button" title="Paste Effects" style="flex: 1;">Paste</button>
+              </div>
+              <div id="amEffectsListBody" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;"></div>
+            </div>
+
+            <!-- TAB 7: LAYER PROPERTIES & DEEP INSPECTOR -->
+            <div class="am-drawer-view" id="amDrawerPropsView" style="display: none; padding: 14px; overflow-y: auto;">
+              <div id="amLayerInspectorContent"></div>
+            </div>
+
+            <!-- TAB 8: REUSABLE ELEMENTS VIEW -->
+            <div class="am-drawer-view" id="amDrawerElementsView" style="display: none; padding: 14px; overflow-y: auto;">
+              <button class="am-btn-save" id="amSaveReusableBtn" type="button" style="width: 100%;">
+                <span>Save Layer as Reusable Element</span>
+              </button>
+              <div class="am-elements-list" id="amElementsList" style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;"></div>
+            </div>
+          </div>
+
+          <!-- Alight Motion Right Category Bar (All 8 Categories matching Screenshot 1) -->
+          <div class="am-category-bar">
+            <button class="am-cat-btn" data-tab="shape" type="button" title="Shapes (20+ Vectors)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polygon points="12 6 19 18 5 18"></polygon>
+              </svg>
+              <span>Shape</span>
+            </button>
+            <button class="am-cat-btn active" data-tab="media" type="button" title="Media (Videos & Images)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+              </svg>
+              <span>Media</span>
+            </button>
+            <button class="am-cat-btn" data-tab="audio" type="button" title="Audio Compatibility & Waveforms">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18V5l12-2v13"></path>
+                <circle cx="6" cy="18" r="3"></circle>
+                <circle cx="18" cy="16" r="3"></circle>
+              </svg>
+              <span>Audio</span>
+            </button>
+            <button class="am-cat-btn" data-tab="drawing" type="button" title="Freehand & Vector Drawing">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+              </svg>
+              <span>Draw</span>
+            </button>
+            <button class="am-cat-btn" data-tab="text" type="button" title="Text & Custom Fonts">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="4 7 4 4 20 4 20 7"></polyline>
+                <line x1="9" y1="20" x2="15" y2="20"></line>
+                <line x1="12" y1="4" x2="12" y2="20"></line>
+              </svg>
+              <span>Text</span>
+            </button>
+            <button class="am-cat-btn" data-tab="fx" type="button" title="Effects (192 Verified)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+              </svg>
+              <span>Effects</span>
+            </button>
+            <button class="am-cat-btn" data-tab="props" type="button" title="Layer Properties & Transforms">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+              <span>Edit</span>
+            </button>
+            <button class="am-cat-btn" data-tab="elements" type="button" title="Reusable Elements">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                <polyline points="2 17 12 22 22 17"></polyline>
+                <polyline points="2 12 12 17 22 12"></polyline>
+              </svg>
+              <span>Elements</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Project Settings Modal (Resolution, FPS, Background Color) -->
+      <div class="am-modal-overlay" id="amSettingsModal" style="display: none;">
+        <div class="am-modal-card am-settings-modal-card">
+          <div class="am-modal-header">
+            <span class="am-modal-title">Project Settings</span>
+            <button class="am-nav-btn" id="amSettingsCloseBtn" type="button" style="font-size: 18px;">&times;</button>
+          </div>
+          <div class="am-settings-body">
+            <!-- 1. Resolution & Aspect Ratio -->
+            <div class="am-settings-section">
+              <label class="am-settings-label">Resolution / Aspect Ratio</label>
+              <div class="am-ratio-presets">
+                <button type="button" class="am-ratio-btn active" data-w="1080" data-h="1080">
+                  <span class="am-ratio-box ratio-1-1"></span>
+                  <span class="am-ratio-text">1:1 (Square)</span>
+                  <span class="am-ratio-sub">1080 × 1080</span>
+                </button>
+                <button type="button" class="am-ratio-btn" data-w="1080" data-h="1920">
+                  <span class="am-ratio-box ratio-9-16"></span>
+                  <span class="am-ratio-text">9:16 (Story / TikTok)</span>
+                  <span class="am-ratio-sub">1080 × 1920</span>
+                </button>
+                <button type="button" class="am-ratio-btn" data-w="1920" data-h="1080">
+                  <span class="am-ratio-box ratio-16-9"></span>
+                  <span class="am-ratio-text">16:9 (Landscape)</span>
+                  <span class="am-ratio-sub">1920 × 1080</span>
+                </button>
+                <button type="button" class="am-ratio-btn" data-w="1080" data-h="1350">
+                  <span class="am-ratio-box ratio-4-5"></span>
+                  <span class="am-ratio-text">4:5 (Portrait)</span>
+                  <span class="am-ratio-sub">1080 × 1350</span>
+                </button>
+                <button type="button" class="am-ratio-btn" data-w="1080" data-h="1440">
+                  <span class="am-ratio-box ratio-3-4"></span>
+                  <span class="am-ratio-text">3:4 (Tablet)</span>
+                  <span class="am-ratio-sub">1080 × 1440</span>
+                </button>
+              </div>
+              <div class="am-custom-res-row">
+                <div class="am-input-group">
+                  <label for="amSettingWidth">Width</label>
+                  <input type="number" id="amSettingWidth" value="1080" min="128" max="4096" step="2">
+                </div>
+                <span class="am-res-sep">×</span>
+                <div class="am-input-group">
+                  <label for="amSettingHeight">Height</label>
+                  <input type="number" id="amSettingHeight" value="1080" min="128" max="4096" step="2">
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Frame Rate (FPS) -->
+            <div class="am-settings-section">
+              <label class="am-settings-label">Frame Rate (FPS)</label>
+              <div class="am-fps-pills">
+                <button type="button" class="am-fps-btn active" data-fps="60">60 fps</button>
+                <button type="button" class="am-fps-btn" data-fps="30">30 fps</button>
+                <button type="button" class="am-fps-btn" data-fps="24">24 fps</button>
+                <button type="button" class="am-fps-btn" data-fps="12">12 fps</button>
+              </div>
+              <div class="am-custom-fps-row">
+                <div class="am-input-group">
+                  <label for="amSettingFps">Custom FPS</label>
+                  <input type="number" id="amSettingFps" value="60" min="1" max="120" step="1">
+                </div>
+                <div class="am-fps-calc-hint" id="amFpsCalcHint">1 frame = 16.67 ms (tick step)</div>
+              </div>
+            </div>
+
+            <!-- 3. Background Color -->
+            <div class="am-settings-section">
+              <label class="am-settings-label">Background Color</label>
+              <div class="am-bg-color-grid">
+                <button type="button" class="am-color-swatch active" data-color="#000000" style="background:#000000;" title="Black">
+                  <span class="am-swatch-check">✓</span>
+                </button>
+                <button type="button" class="am-color-swatch am-swatch-transparent" data-color="transparent" title="Transparent">
+                  <span class="am-swatch-check">✓</span>
+                </button>
+                <button type="button" class="am-color-swatch" data-color="#ffffff" style="background:#ffffff;" title="White">
+                  <span class="am-swatch-check" style="color:#000;">✓</span>
+                </button>
+                <button type="button" class="am-color-swatch" data-color="#00ff00" style="background:#00ff00;" title="Green Screen">
+                  <span class="am-swatch-check" style="color:#000;">✓</span>
+                </button>
+                <button type="button" class="am-color-swatch" data-color="#161922" style="background:#161922;" title="Deep Slate">
+                  <span class="am-swatch-check">✓</span>
+                </button>
+                <button type="button" class="am-color-swatch" data-color="#7b8599" style="background:#7b8599;" title="Light Gray">
+                  <span class="am-swatch-check">✓</span>
+                </button>
+              </div>
+              <div class="am-custom-color-row">
+                <div class="am-color-picker-wrap">
+                  <input type="color" id="amSettingBgColorPicker" value="#000000">
+                </div>
+                <input type="text" id="amSettingBgColorHex" value="#000000" placeholder="#000000" spellcheck="false">
+              </div>
+            </div>
+          </div>
+          <div class="am-modal-actions">
+            <button class="am-btn-cancel" id="amSettingsCancelBtn" type="button">Cancel</button>
+            <button class="am-btn-save" id="amSettingsSaveBtn" type="button">Save Settings</button>
+          </div>
+        </div>
+      </div>
+
+<!-- Effect Library Modal (192 Verified Alight Motion Effects) -->
+      <div class="am-modal-overlay" id="amEffectLibraryModal" style="display: none;">
+        <div class="am-modal-card">
+          <div class="am-modal-header">
+            <span class="am-modal-title">Alight Motion Effect Library (192 Verified Effects)</span>
+            <button class="am-nav-btn" id="amModalCloseBtn" type="button" style="font-size: 18px;">&times;</button>
+          </div>
+          <div class="am-eff-search-box">
+            <input type="text" class="am-eff-search-input" id="amEffSearchInput" placeholder="Search 192 effects by name or category (e.g. Box Blur, Chroma Key, Glow, Wave Warp)...">
+          </div>
+          <div class="am-cat-filter-pills">
+            <button class="am-cat-pill active" data-cat="all" type="button">All (192)</button>
+            <button class="am-cat-pill" data-cat="Blur" type="button">Blur (20)</button>
+            <button class="am-cat-pill" data-cat="Color & Light" type="button">Color &amp; Light (32)</button>
+            <button class="am-cat-pill" data-cat="Distortion & Warp" type="button">Distortion &amp; Warp (29)</button>
+            <button class="am-cat-pill" data-cat="Procedural" type="button">Procedural (24)</button>
+            <button class="am-cat-pill" data-cat="3D" type="button">3D (20)</button>
+            <button class="am-cat-pill" data-cat="Move & Transform" type="button">Move &amp; Transform (15)</button>
+            <button class="am-cat-pill" data-cat="Drawing & Edge" type="button">Drawing &amp; Edge (17)</button>
+            <button class="am-cat-pill" data-cat="Matte, Mask & Key" type="button">Matte, Mask &amp; Key (7)</button>
+            <button class="am-cat-pill" data-cat="Opacity & Visibility" type="button">Opacity &amp; Visibility (7)</button>
+            <button class="am-cat-pill" data-cat="Repeat" type="button">Repeat (7)</button>
+            <button class="am-cat-pill" data-cat="Text" type="button">Text (6)</button>
+            <button class="am-cat-pill" data-cat="Other" type="button">Other (8)</button>
+          </div>
+          <div class="am-eff-list-grid" id="amEffListGrid"></div>
+        </div>
+      </div>
+    
+      <!-- Easing Curve Graph Modal (Alight Motion Timing Curves) -->
+      <div class="am-modal-overlay" id="amGraphModal" style="display: none;">
+        <div class="am-modal-card" style="width: 440px; max-width: 95vw;">
+          <div class="am-modal-header">
+            <span class="am-modal-title">Timing Curve / Easing Graph</span>
+            <button class="am-nav-btn" id="amGraphCloseBtn" type="button" style="font-size: 18px;">&times;</button>
+          </div>
+          <div style="padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="width: 100%; height: 200px; background: #12141c; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); position: relative;">
+              <canvas id="amCurveCanvas" width="400" height="200" style="width:100%; height:100%; display:block; cursor:crosshair;"></canvas>
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button class="am-cat-pill am-curve-preset active" data-curve="0 0 1 1" type="button">Linear</button>
+              <button class="am-cat-pill am-curve-preset" data-curve="0.4 0 0.2 1" type="button">AM Smooth</button>
+              <button class="am-cat-pill am-curve-preset" data-curve="0.42 0 1 1" type="button">Ease In</button>
+              <button class="am-cat-pill am-curve-preset" data-curve="0 0 0.58 1" type="button">Ease Out</button>
+              <button class="am-cat-pill am-curve-preset" data-curve="0.42 0 0.58 1" type="button">Ease In Out</button>
+              <button class="am-cat-pill am-curve-preset" data-curve="0.1 0.9 0.2 1" type="button">Fast-Slow</button>
+              <button class="am-cat-pill am-curve-preset" data-curve="0.34 1.56 0.64 1" type="button">Overshoot</button>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+              <button class="am-btn-cancel" id="amGraphCancelBtn" type="button">Cancel</button>
+              <button class="am-btn-save" id="amGraphApplyBtn" type="button">Apply Curve</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export & Sharing Modal -->
+      <div class="am-modal-overlay" id="amExportModal" style="display: none;">
+        <div class="am-modal-card" style="width: 480px; max-width: 95vw;">
+          <div class="am-modal-header">
+            <span class="am-modal-title">Export &amp; Share Project</span>
+            <button class="am-nav-btn" id="amExportCloseBtn" type="button" style="font-size: 18px;">&times;</button>
+          </div>
+          <div style="padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <button class="am-ratio-btn" id="amExportXmlActionBtn" type="button" style="padding: 14px 10px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00e676" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                <span class="am-ratio-text">Alight Motion XML</span>
+                <span class="am-ratio-sub">Native app project (.xml)</span>
+              </button>
+              <button class="am-ratio-btn" id="amExportJsonActionBtn" type="button" style="padding: 14px 10px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#38ef7d" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                <span class="am-ratio-text">Project JSON</span>
+                <span class="am-ratio-sub">Backup &amp; Reusable</span>
+              </button>
+              <button class="am-ratio-btn" id="amExportPngActionBtn" type="button" style="padding: 14px 10px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                <span class="am-ratio-text">Current Frame (PNG)</span>
+                <span class="am-ratio-sub">Hi-res image snapshot</span>
+              </button>
+              <button class="am-ratio-btn" id="amExportVideoActionBtn" type="button" style="padding: 14px 10px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ff4757" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                <span class="am-ratio-text">Record Video (WebM)</span>
+                <span class="am-ratio-sub">Render timeline animation</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+</section>
+
   </main>
 
   <!-- Paste XML Modal -->
@@ -2091,6 +2750,9 @@
     <div class="mobile-tab-content" id="mobileTabHollowBox" style="display: none;">
       <div class="mobile-tab-inner" id="mobileHollowBoxSlot"></div>
     </div>
+    <div class="mobile-tab-content" id="mobileTabEditing" style="display: none;">
+      <div class="mobile-tab-inner" id="mobileEditingSlot"></div>
+    </div>
 
     <!-- Floating Resizable Inspector (Friendly Default Size Immediately) -->
     <div class="mobile-floating-inspector" id="mobileFloatingInspector" role="region" aria-label="Floating Inspector">
@@ -2163,12 +2825,21 @@
         </svg>
         <span>YT Converter</span>
       </button>
+      <button class="mobile-tab" data-tab="mobileTabEditing" type="button" style="display: none !important;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        <span>Editing TAB</span>
+      </button>
     </nav>
   </div>
 
   <script src="am_effects_db.js"></script>
-  <script src="ytconverter.js?v=5.8"></script>
+  <script src="ytconverter.js?v=6.0"></script>
   <script src="app.js?v=5.0"></script>
+  <script src="am_verified_effects.js"></script>
+  <script src="am_glsl_catalog.js"></script>
+  <script src="editing_tab.js?v=1.0"></script>
   <script src="fx.js?v=4.9"></script>
 </body>
 </html>

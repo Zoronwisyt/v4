@@ -883,3 +883,16 @@ At the end of every prompt where changes are made:
     - Updated URL input placeholder and added a `✓ TikTok HD (No Watermark)` quick preset pill.
 - **Learnings & Invariants**:
   - Local `yt-dlp` without `curl_cffi` impersonation is blocked by TikTok's TLS fingerprint gate; resolving TikTok links via TikWM (`hd=1` → `hdplay` / `play`) + Cobalt fallback guarantees 100% watermark-free original quality streams across local Node, Cloudflare Workers, and static browser environments.
+
+### [2026-11-02 21:24] — Rollback School Bypass Files
+- **Prompt / Request**: Remove whatever you added for the school bypass
+- **Files Removed**:
+  - `bundle_offline.js`
+  - `flippy_offline.html`
+  - `stealth_launcher.html`
+- **Adjustments Made**:
+  - Completely purged offline bundler and stealth about:blank launcher files from workspace.
+- **Learnings & Invariants**:
+  - Workspace restored to pristine state without bypass tooling.
+
+

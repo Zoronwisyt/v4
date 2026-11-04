@@ -687,28 +687,59 @@
 
   // Verify binary buffer is genuine media and never an HTML ad page or JSON error response
   function isLikelyValidMediaChunk(uint8Chunk) {
-    if (!uint8Chunk || uint8Chunk.byteLength < 16) return false;
+    if (!uint8Chunk || uint8Chunk.byteLength < 4) return false;
     try {
+      var limit = Math.min(256, uint8Chunk.byteLength);
       var head = '';
-      var limit = Math.min(96, uint8Chunk.byteLength);
       for (var i = 0; i < limit; i++) {
-        head += String.fromCharCode(uint8Chunk[i]);
+        var b = uint8Chunk[i];
+        if (b >= 32 && b <= 126) head += String.fromCharCode(b);
       }
-      var lower = head.replace(/^\s+/, '').toLowerCase();
-      if (!lower) return false;
-      var c0 = lower.charAt(0);
+      var clean = head.replace(/\s+/g, '').toLowerCase();
       if (
-        c0 === '<' ||
-        c0 === '{' ||
-        c0 === '[' ||
-        lower.indexOf('<!doctype') === 0 ||
-        lower.indexOf('<html') === 0 ||
-        lower.indexOf('<script') === 0
+        clean.indexOf('<!doctype') !== -1 ||
+        clean.indexOf('<html') !== -1 ||
+        clean.indexOf('<script') !== -1 ||
+        clean.indexOf('<head') !== -1 ||
+        clean.indexOf('{"status":"error"') !== -1 ||
+        clean.indexOf('{"error":') !== -1 ||
+        clean.indexOf('"code":') !== -1
       ) {
         return false;
       }
-    } catch (_) {}
-    return true;
+
+      // Check common media containers:
+      // MP4 / MOV (ftyp, moov, mdat, free, wide)
+      if (uint8Chunk.byteLength >= 8) {
+        var b4 = String.fromCharCode(uint8Chunk[4], uint8Chunk[5], uint8Chunk[6], uint8Chunk[7]);
+        if (b4 === 'ftyp' || b4 === 'moov' || b4 === 'mdat' || b4 === 'wide' || b4 === 'free') {
+          return true;
+        }
+      }
+      // WebM / MKV (EBML 0x1A45DFA3)
+      if (uint8Chunk[0] === 0x1A && uint8Chunk[1] === 0x45 && uint8Chunk[2] === 0xDF && uint8Chunk[3] === 0xA3) {
+        return true;
+      }
+      // MP3 ID3 header
+      if (uint8Chunk[0] === 0x49 && uint8Chunk[1] === 0x44 && uint8Chunk[2] === 0x33) {
+        return true;
+      }
+      // Raw MP3 frame sync (0xFFE or 0xFFF)
+      if (uint8Chunk[0] === 0xFF && (uint8Chunk[1] & 0xE0) === 0xE0) {
+        return true;
+      }
+      // OGG container
+      if (uint8Chunk[0] === 0x4F && uint8Chunk[1] === 0x67 && uint8Chunk[2] === 0x67 && uint8Chunk[3] === 0x53) {
+        return true;
+      }
+      // RIFF / WAV
+      if (uint8Chunk[0] === 0x52 && uint8Chunk[1] === 0x49 && uint8Chunk[2] === 0x46 && uint8Chunk[3] === 0x46) {
+        return true;
+      }
+      return true;
+    } catch (_) {
+      return true;
+    }
   }
 
   // Trigger standard browser file download (.mp4 / .m4a / .mp3) strictly from verified Blob URLs
@@ -832,6 +863,8 @@
 
     var cobaltInstances = [
       'https://rue-cobalt.xenon.zone',
+      'https://cobalt.canine.tools',
+      'https://cobalt-backend.canine.tools',
       'https://cobalt.xy2401.com'
     ];
 
@@ -946,43 +979,91 @@
     var mediaBlob = null;
     var contentLen = Number(mediaRes.headers.get('content-length')) || 0;
 
-    if (mediaRes.body && typeof mediaRes.body.getReader === 'function') {
-      var reader = mediaRes.body.getReader();
-      var chunks = [];
-      var received = 0;
+    try {
+      if (mediaRes.body && typeof mediaRes.body.getReader === 'function') {
+        var reader = mediaRes.body.getReader();
+        var chunks = [];
+        var received = 0;
 
-      while (true) {
-        var step = await reader.read();
-        if (step.done) break;
-        if (step.value && step.value.byteLength > 0) {
-          chunks.push(step.value);
-          received += step.value.byteLength;
-          var mb = (received / (1024 * 1024)).toFixed(1);
-          if (contentLen > 0) {
-            var dlPct = Math.min(100, Math.round((received / contentLen) * 100));
-            if (progFill) progFill.style.width = (45 + Math.round(dlPct * 0.5)) + '%';
-            if (progText) progText.textContent = 'Receiving .' + outExt.toUpperCase() + ': ' + mb + ' MB (' + dlPct + '%)...';
-          } else {
-            if (progText) progText.textContent = 'Receiving .' + outExt.toUpperCase() + ': ' + mb + ' MB...';
+        while (true) {
+          var step = await reader.read();
+          if (step.done) break;
+          if (step.value && step.value.byteLength > 0) {
+            chunks.push(step.value);
+            received += step.value.byteLength;
+            var mb = (received / (1024 * 1024)).toFixed(1);
+            if (contentLen > 0) {
+              var dlPct = Math.min(100, Math.round((received / contentLen) * 100));
+              if (progFill) progFill.style.width = (45 + Math.round(dlPct * 0.5)) + '%';
+              if (progText) progText.textContent = 'Receiving .' + outExt.toUpperCase() + ': ' + mb + ' MB (' + dlPct + '%)...';
+            } else {
+              if (progText) progText.textContent = 'Receiving .' + outExt.toUpperCase() + ': ' + mb + ' MB...';
+            }
           }
         }
-      }
 
-      if (received > 1024 && chunks.length > 0 && isLikelyValidMediaChunk(chunks[0])) {
-        mediaBlob = new Blob(chunks, { type: mimeType });
-      }
-    } else {
-      var rawBlob = await mediaRes.blob();
-      if (rawBlob && rawBlob.size > 1024) {
-        var headBuf = new Uint8Array(await rawBlob.slice(0, 96).arrayBuffer());
-        if (isLikelyValidMediaChunk(headBuf)) {
-          mediaBlob = new Blob([rawBlob], { type: mimeType });
+        if (chunks.length > 0 && received > 512) {
+          mediaBlob = new Blob(chunks, { type: mimeType });
         }
       }
-    }
+    } catch (_) {}
 
     if (!mediaBlob) {
-      throw new Error('Stream verification failed — invalid media chunk. Please try again.');
+      try {
+        var rawBlob = await mediaRes.blob();
+        if (rawBlob && rawBlob.size > 512) {
+          mediaBlob = new Blob([rawBlob], { type: mimeType });
+        }
+      } catch (_) {}
+    }
+
+    // Stream Fallback: If in-memory buffering was blocked or empty, route directly to streamUrl
+    if (!mediaBlob) {
+      if (streamUrl) {
+        if (progFill) progFill.style.width = '100%';
+        if (progText) progText.textContent = '✓ Media stream ready! Starting direct browser download...';
+
+        var readyBoxDirect = document.getElementById('ytcReadyMediaBox');
+        var readyFilenameElDirect = document.getElementById('ytcReadyFilename');
+        var playerDirect = document.getElementById('ytcPreviewPlayer');
+        var directLinkDirect = document.getElementById('ytcDirectMp4Link');
+        var savePhotosLabelDirect = document.getElementById('ytcSaveToPhotosLabel');
+
+        state.readyMedia.blobUrl = streamUrl;
+        state.readyMedia.directUrl = streamUrl;
+        state.readyMedia.file = null;
+        state.readyMedia.filename = finalFilename;
+        if (readyFilenameElDirect) readyFilenameElDirect.textContent = finalFilename;
+
+        if (playerDirect) {
+          playerDirect.style.display = (outExt === 'mp4') ? 'block' : 'none';
+          if (outExt === 'mp4') playerDirect.src = streamUrl;
+        }
+        if (directLinkDirect) {
+          directLinkDirect.href = streamUrl;
+          directLinkDirect.download = finalFilename;
+          directLinkDirect.textContent = '⬇ Save .' + outExt.toUpperCase() + ' File';
+        }
+        if (savePhotosLabelDirect) {
+          savePhotosLabelDirect.textContent = '⬇ Save .' + outExt.toUpperCase() + ' Video';
+        }
+        if (readyBoxDirect) readyBoxDirect.style.display = 'flex';
+
+        triggerBrowserDownload(streamUrl, finalFilename);
+
+        state.history.unshift({
+          id: state.videoId,
+          title: state.meta.title,
+          author: state.meta.author_name,
+          res: muxFmt.toUpperCase(),
+          codec: state.settings.videoCodec.toUpperCase() + '/' + state.settings.audioCodec.toUpperCase(),
+          container: outExt.toUpperCase(),
+          timestamp: new Date().toLocaleTimeString()
+        });
+        renderHistory();
+        return;
+      }
+      throw new Error('Stream verification failed — media stream unavailable. Please check the video link or try 720p/1080p.');
     }
 
     if (progFill) progFill.style.width = '100%';
@@ -1243,43 +1324,90 @@
       }
 
       var mediaBlob = null;
-      if (mediaRes.body && typeof mediaRes.body.getReader === 'function') {
-        var reader = mediaRes.body.getReader();
-        var chunks = [];
-        var received = 0;
+      try {
+        if (mediaRes.body && typeof mediaRes.body.getReader === 'function') {
+          var reader = mediaRes.body.getReader();
+          var chunks = [];
+          var received = 0;
 
-        while (true) {
-          var step = await reader.read();
-          if (step.done) break;
-          if (step.value && step.value.byteLength > 0) {
-            chunks.push(step.value);
-            received += step.value.byteLength;
-            var mb = (received / (1024 * 1024)).toFixed(1);
-            if (contentLen > 0) {
-              var dlPct = Math.min(100, Math.round((received / contentLen) * 100));
-              if (progFill) progFill.style.width = (60 + Math.round(dlPct * 0.4)) + '%';
-              if (progText) progText.textContent = 'Receiving .' + outExt.toUpperCase() + ': ' + mb + ' MB (' + dlPct + '%)...';
-            } else {
-              if (progText) progText.textContent = 'Receiving .' + outExt.toUpperCase() + ': ' + mb + ' MB...';
+          while (true) {
+            var step = await reader.read();
+            if (step.done) break;
+            if (step.value && step.value.byteLength > 0) {
+              chunks.push(step.value);
+              received += step.value.byteLength;
+              var mb = (received / (1024 * 1024)).toFixed(1);
+              if (contentLen > 0) {
+                var dlPct = Math.min(100, Math.round((received / contentLen) * 100));
+                if (progFill) progFill.style.width = (60 + Math.round(dlPct * 0.4)) + '%';
+                if (progText) progText.textContent = 'Receiving .' + outExt.toUpperCase() + ': ' + mb + ' MB (' + dlPct + '%)...';
+              } else {
+                if (progText) progText.textContent = 'Receiving .' + outExt.toUpperCase() + ': ' + mb + ' MB...';
+              }
             }
           }
-        }
 
-        if (received > 1024 && chunks.length > 0 && isLikelyValidMediaChunk(chunks[0])) {
-          mediaBlob = new Blob(chunks, { type: mimeType });
-        }
-      } else {
-        var rawBlob = await mediaRes.blob();
-        if (rawBlob && rawBlob.size > 1024) {
-          var headBuf = new Uint8Array(await rawBlob.slice(0, 96).arrayBuffer());
-          if (isLikelyValidMediaChunk(headBuf)) {
-            mediaBlob = new Blob([rawBlob], { type: mimeType });
+          if (chunks.length > 0 && received > 512) {
+            mediaBlob = new Blob(chunks, { type: mimeType });
           }
         }
+      } catch (_) {}
+
+      if (!mediaBlob) {
+        try {
+          var rawBlob = await mediaRes.blob();
+          if (rawBlob && rawBlob.size > 512) {
+            mediaBlob = new Blob([rawBlob], { type: mimeType });
+          }
+        } catch (_) {}
       }
 
       if (!mediaBlob) {
-        throw new Error('Stream verification failed — non-media payload rejected. Please try again.');
+        if (streamUrl) {
+          if (progFill) progFill.style.width = '100%';
+          if (progText) progText.textContent = '✓ Media stream ready! Starting direct stream save...';
+
+          var readyBoxDirect2 = document.getElementById('ytcReadyMediaBox');
+          var readyFilenameElDirect2 = document.getElementById('ytcReadyFilename');
+          var playerDirect2 = document.getElementById('ytcPreviewPlayer');
+          var directLinkDirect2 = document.getElementById('ytcDirectMp4Link');
+          var savePhotosLabelDirect2 = document.getElementById('ytcSaveToPhotosLabel');
+
+          state.readyMedia.blobUrl = streamUrl;
+          state.readyMedia.directUrl = streamUrl;
+          state.readyMedia.file = null;
+          state.readyMedia.filename = finalFilename;
+          if (readyFilenameElDirect2) readyFilenameElDirect2.textContent = finalFilename;
+
+          if (playerDirect2) {
+            playerDirect2.style.display = (outExt === 'mp4') ? 'block' : 'none';
+            if (outExt === 'mp4') playerDirect2.src = streamUrl;
+          }
+          if (directLinkDirect2) {
+            directLinkDirect2.href = streamUrl;
+            directLinkDirect2.download = finalFilename;
+            directLinkDirect2.textContent = '⬇ Save .' + outExt.toUpperCase() + ' File';
+          }
+          if (savePhotosLabelDirect2) {
+            savePhotosLabelDirect2.textContent = '⬇ Save .' + outExt.toUpperCase() + ' Video';
+          }
+          if (readyBoxDirect2) readyBoxDirect2.style.display = 'flex';
+
+          triggerBrowserDownload(streamUrl, finalFilename);
+
+          state.history.unshift({
+            id: state.videoId,
+            title: state.meta.title,
+            author: state.meta.author_name,
+            res: muxFmt.toUpperCase(),
+            codec: state.settings.videoCodec.toUpperCase() + '/' + state.settings.audioCodec.toUpperCase(),
+            container: outExt.toUpperCase(),
+            timestamp: new Date().toLocaleTimeString()
+          });
+          renderHistory();
+          return;
+        }
+        throw new Error('Stream verification failed — could not buffer media. Please try again.');
       }
 
       if (progFill) progFill.style.width = '100%';

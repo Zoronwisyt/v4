@@ -4593,6 +4593,8 @@
   const navTabRealPreview = $('#navTabRealPreview');
   const navTabYtConverter = $('#navTabYtConverter');
   const navTabHollowBox = $('#navTabHollowBox');
+  const navTabEditing = $('#navTabEditing');
+  const editingPanelElem = $('#editing-panel');
   const headerExportBtn = $('#headerExportBtn');
   const headerExportLabel = $('#headerExportLabel');
   const controlsPanelElem = $('#controls-panel');
@@ -4617,6 +4619,8 @@
       if (navTabRealPreview) navTabRealPreview.classList.remove('active');
       if (navTabYtConverter) navTabYtConverter.classList.remove('active');
       if (navTabHollowBox) navTabHollowBox.classList.remove('active');
+      if (navTabEditing) navTabEditing.classList.remove('active');
+      const edPanel1 = document.getElementById('editing-panel'); if (edPanel1) edPanel1.style.display = 'none';
       if (headerExportLabel) headerExportLabel.textContent = 'Export Media XML';
       if (controlsPanelElem) controlsPanelElem.style.display = 'none';
       if (previewPanelElem) previewPanelElem.style.display = 'none';
@@ -4649,6 +4653,8 @@
       if (navTabConverter) navTabConverter.classList.remove('active');
       if (navTabRealPreview) navTabRealPreview.classList.remove('active');
       if (navTabHollowBox) navTabHollowBox.classList.remove('active');
+      if (navTabEditing) navTabEditing.classList.remove('active');
+      const edPanel2 = document.getElementById('editing-panel'); if (edPanel2) edPanel2.style.display = 'none';
       if (headerExportLabel) headerExportLabel.textContent = 'Download Stream';
       if (controlsPanelElem) controlsPanelElem.style.display = 'none';
       if (previewPanelElem) previewPanelElem.style.display = 'none';
@@ -4683,6 +4689,8 @@
       if (navTabConverter) navTabConverter.classList.remove('active');
       if (navTabYtConverter) navTabYtConverter.classList.remove('active');
       if (navTabHollowBox) navTabHollowBox.classList.remove('active');
+      if (navTabEditing) navTabEditing.classList.remove('active');
+      const edPanel3 = document.getElementById('editing-panel'); if (edPanel3) edPanel3.style.display = 'none';
       if (headerExportLabel) headerExportLabel.textContent = 'Export XML';
       if (controlsPanelElem) controlsPanelElem.style.display = 'none';
       if (previewPanelElem) previewPanelElem.style.display = 'none';
@@ -4719,12 +4727,51 @@
       if (typeof initRealPreview === 'function') {
         initRealPreview();
       }
+    } else if (tabName === 'editing') {
+      if (navTabEditing) navTabEditing.classList.add('active');
+      if (navTabStudio) navTabStudio.classList.remove('active');
+      if (navTabConverter) navTabConverter.classList.remove('active');
+      if (navTabRealPreview) navTabRealPreview.classList.remove('active');
+      if (navTabYtConverter) navTabYtConverter.classList.remove('active');
+      if (navTabHollowBox) navTabHollowBox.classList.remove('active');
+      if (headerExportLabel) headerExportLabel.textContent = 'Export AM XML';
+      if (controlsPanelElem) controlsPanelElem.style.display = 'none';
+      if (previewPanelElem) previewPanelElem.style.display = 'none';
+      if (dataPanelElem) dataPanelElem.style.display = 'none';
+      if (converterPanelElem) converterPanelElem.style.display = 'none';
+      if (realpreviewPanelElem) realpreviewPanelElem.style.display = 'none';
+      if (ytconverterPanelElem) ytconverterPanelElem.style.display = 'none';
+      if (hollowboxPanelElem) hollowboxPanelElem.style.display = 'none';
+      const editingPanel = document.getElementById('editing-panel');
+      if (editingPanel) {
+        editingPanel.style.display = isMobile ? 'block' : 'flex';
+        editingPanel.style.opacity = '1';
+        editingPanel.style.visibility = 'visible';
+        editingPanel.style.pointerEvents = 'auto';
+      }
+      const mobileTabEd = document.getElementById('mobileTabEditing');
+      const mobileEdBtn = document.querySelector('.mobile-tab[data-tab="mobileTabEditing"]');
+      const mobileFloatingInsp = document.getElementById('mobileFloatingInspector');
+      const mobileInspToggleBtn = document.getElementById('mobileInspectorToggleBtn');
+      if (mobileFloatingInsp) mobileFloatingInsp.classList.add('hidden-for-tab');
+      if (mobileInspToggleBtn) mobileInspToggleBtn.classList.remove('active');
+      if (mobileEdBtn && mobileTabEd) {
+        document.querySelectorAll('.mobile-tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.mobile-tab-content').forEach(tc => tc.classList.remove('active'));
+        mobileEdBtn.classList.add('active');
+        mobileTabEd.classList.add('active');
+      }
+      if (window.EditingTabStudio && typeof window.EditingTabStudio.init === 'function') {
+        window.EditingTabStudio.init();
+      }
     } else if (tabName === 'hollowbox') {
       if (navTabHollowBox) navTabHollowBox.classList.add('active');
       if (navTabStudio) navTabStudio.classList.remove('active');
       if (navTabConverter) navTabConverter.classList.remove('active');
       if (navTabRealPreview) navTabRealPreview.classList.remove('active');
       if (navTabYtConverter) navTabYtConverter.classList.remove('active');
+      if (navTabEditing) navTabEditing.classList.remove('active');
+      const edPanel4 = document.getElementById('editing-panel'); if (edPanel4) edPanel4.style.display = 'none';
       if (headerExportLabel) headerExportLabel.textContent = 'Export HB XML';
       if (controlsPanelElem) controlsPanelElem.style.display = 'none';
       if (previewPanelElem) previewPanelElem.style.display = 'none';
@@ -4758,6 +4805,8 @@
       if (navTabRealPreview) navTabRealPreview.classList.remove('active');
       if (navTabYtConverter) navTabYtConverter.classList.remove('active');
       if (navTabHollowBox) navTabHollowBox.classList.remove('active');
+      if (navTabEditing) navTabEditing.classList.remove('active');
+      const edPanel3 = document.getElementById('editing-panel'); if (edPanel3) edPanel3.style.display = 'none';
       if (headerExportLabel) headerExportLabel.textContent = 'Export XML';
       if (controlsPanelElem) controlsPanelElem.style.display = '';
       if (previewPanelElem) previewPanelElem.style.display = '';
@@ -4805,6 +4854,9 @@
   if (navTabHollowBox) {
     navTabHollowBox.addEventListener('click', () => switchMainTab('hollowbox'));
   }
+  if (navTabEditing) {
+    navTabEditing.addEventListener('click', () => switchMainTab('editing'));
+  }
   if (headerExportBtn) {
     headerExportBtn.addEventListener('click', () => {
       if (activeMainWorkspace === 'converter') {
@@ -4816,6 +4868,8 @@
       } else if (activeMainWorkspace === 'hollowbox') {
         const btnDl = document.getElementById('hbDownloadXmlBtn');
         if (btnDl) btnDl.click();
+      } else if (activeMainWorkspace === 'editing') {
+        if (window.EditingTabStudio && typeof window.EditingTabStudio.exportXML === 'function') window.EditingTabStudio.exportXML();
       } else if (downloadXmlBtn) {
         downloadXmlBtn.click();
       }
@@ -8634,7 +8688,9 @@ void main() {
             mobileHeaderDlText.textContent = 'Export Media XML';
           } else if (targetId === 'mobileTabYtConverter') {
             mobileHeaderDlText.textContent = 'Download MP4';
-          } else if (targetId === 'mobileTabHollowBox') {
+          } else if (targetId === 'mobileTabEditing') {
+          switchMainTab('editing');
+        } else if (targetId === 'mobileTabHollowBox') {
             mobileHeaderDlText.textContent = 'Export HB XML';
           } else {
             mobileHeaderDlText.textContent = 'Export XML';
